@@ -75,3 +75,13 @@ gsap.ticker.add(() => {
   document.body.classList.toggle('hover-card', !!hoverMesh && !controls.dragging);
   renderer.render(scene, camera);
 });
+
+camera.fov = 95;
+camera.updateProjectionMatrix();
+gsap.to(camera, {
+  fov: 65,
+  duration: 1.8,
+  ease: 'power3.inOut',
+  onUpdate: () => camera.updateProjectionMatrix(),
+});
+gsap.from(controls.target, { x: 0.6, y: -0.3, duration: 1.8, ease: 'power3.out' });
