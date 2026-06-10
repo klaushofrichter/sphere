@@ -48,12 +48,12 @@ export class Gallery {
     if (this.hovered === mesh) return;
     if (this.hovered) {
       gsap.to(this.hovered.material.color, {
-        r: BASE_TINT, g: BASE_TINT, b: BASE_TINT, duration: 0.4, ease: 'power2.out',
+        r: BASE_TINT, g: BASE_TINT, b: BASE_TINT, duration: 0.4, ease: 'power2.out', overwrite: 'auto',
       });
     }
     this.hovered = mesh;
     if (mesh) {
-      gsap.to(mesh.material.color, { r: 1, g: 1, b: 1, duration: 0.25, ease: 'power2.out' });
+      gsap.to(mesh.material.color, { r: 1, g: 1, b: 1, duration: 0.25, ease: 'power2.out', overwrite: 'auto' });
     }
   }
 }

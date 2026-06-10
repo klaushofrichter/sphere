@@ -19,7 +19,7 @@ export class Controls {
     el.addEventListener('pointerdown', (e) => this.onDown(e));
     window.addEventListener('pointermove', (e) => this.onMove(e));
     window.addEventListener('pointerup', (e) => this.onUp(e));
-    window.addEventListener('pointercancel', (e) => this.onUp(e));
+    window.addEventListener('pointercancel', () => this.cancel());
   }
 
   onDown(e) {
@@ -64,6 +64,12 @@ export class Controls {
       duration: 1.4,
       ease: 'power3.out',
     });
+  }
+
+  cancel() {
+    if (!this.dragging) return;
+    this.dragging = false;
+    document.body.classList.remove('dragging');
   }
 
   tick() {
