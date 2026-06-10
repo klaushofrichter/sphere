@@ -5,3 +5,5 @@ coverage/
 .env.local
 .DS_Store
 *.log
+phantom.png
+screenshot.png

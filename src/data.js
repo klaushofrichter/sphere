@@ -1,5 +1,5 @@
-const CLIENTS = ['Google', 'Netflix', 'Zendesk', 'Diageo', 'HBO',
-  'Bumble', 'YouTube', 'Monocle', 'CapitalG', 'Phantom'];
+const CLIENTS = ['Lumenworks', 'Northbeam', 'Atlas & Co', 'Verdantia', 'Halcyon',
+  'Mosaic Labs', 'Quartzline', 'Driftwood', 'Polaris', 'Embergrove'];
 const QUALIFIERS = ['Pixel', 'Global', 'Festive', 'Annoying', 'Ultimate',
   'Spherical', 'Walking', 'Visitor', 'Brand', 'Travel'];
 const SUBJECTS = ['Compass', 'Takeover', 'Experience', 'Generator', 'Tour',

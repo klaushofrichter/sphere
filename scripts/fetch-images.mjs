@@ -1,10 +1,10 @@
 import { mkdir, writeFile, access } from 'node:fs/promises';
 
 const COUNT = 100;
-await mkdir('assets', { recursive: true });
+await mkdir('public/assets', { recursive: true });
 
 for (let i = 0; i < COUNT; i++) {
-  const dest = `assets/img-${i}.jpg`;
+  const dest = `public/assets/img-${i}.jpg`;
   try {
     await access(dest);
     console.log(`skip ${dest}`);
