@@ -81,3 +81,13 @@ responsive/mobile work. Git repo initialized in this folder.
 - Mobile/touch, accessibility, SEO anchors, sound, filtering UI, real project content,
   dynamic image service (later phase), automatic navigation (later phase — enabled by the
   offset-tween design but not implemented).
+
+## Future-phase constraints the design must not preclude
+
+- **Dynamic image exchange:** in a later phase, individual card images will be swapped at
+  runtime from a service. The per-card texture baking supports this: re-bake one card's
+  texture from a new image and assign it to that mesh's `material.map`
+  (`needsUpdate = true`). No global atlas or shared texture is used, so swaps stay cheap
+  and card-local.
+- **Automatic navigation:** scrolling is a single 2D offset vector, so automated tours are
+  GSAP tweens of that vector.
