@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Sphere Gallery PoC</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <div class="vignette"></div>
+  <header class="hud">SPHERE GALLERY — POC</header>
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <button class="overlay-close" id="overlay-close">Close</button>
+    <div class="overlay-inner">
+      <p class="overlay-client" id="overlay-client"></p>
+      <h1 class="overlay-title" id="overlay-title"></h1>
+      <p class="overlay-meta" id="overlay-meta"></p>
+      <img class="overlay-img" id="overlay-img" alt="" />
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
