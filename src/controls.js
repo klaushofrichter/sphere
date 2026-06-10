@@ -1,9 +1,9 @@
 import { gsap } from 'gsap';
 
 const DRAG_SPEED = 0.0022; // radians of scroll per pixel of pointer travel
-const EASE = 0.085;        // per-frame lerp factor toward target
+const EASE = 0.085;        // per-frame lerp factor toward target (calibrated for 60 fps)
 const CLICK_DIST = 6;      // px of travel below which pointerup counts as a click
-const FLING = 0.45;        // seconds of velocity carried into momentum
+const FLING = 0.45;        // velocity-to-distance scale: extra radians = velocity (rad/s) * FLING (s)
 
 export class Controls {
   constructor(el, onClick) {
@@ -19,6 +19,7 @@ export class Controls {
     el.addEventListener('pointerdown', (e) => this.onDown(e));
     window.addEventListener('pointermove', (e) => this.onMove(e));
     window.addEventListener('pointerup', (e) => this.onUp(e));
+    window.addEventListener('pointercancel', (e) => this.onUp(e));
   }
 
   onDown(e) {
@@ -49,6 +50,10 @@ export class Controls {
     this.dragging = false;
     document.body.classList.remove('dragging');
     const travel = Math.hypot(e.clientX - this.start.x, e.clientY - this.start.y);
+    if (performance.now() - this.last.t > 80) {
+      this.velocity.x = 0;
+      this.velocity.y = 0;
+    }
     if (travel < CLICK_DIST) {
       this.onClick(e);
       return;
