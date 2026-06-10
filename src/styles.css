@@ -17,7 +17,7 @@ body.hover-card { cursor: pointer; }
   position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
   font-size: 11px; letter-spacing: 0.2em; color: #888; pointer-events: none;
 }
-.overlay { position: fixed; inset: 0; display: none; z-index: 10; overflow-y: auto; }
+.overlay { position: fixed; inset: 0; display: none; z-index: 10; overflow-y: auto; cursor: default; }
 .overlay-inner { max-width: 1100px; margin: 0 auto; padding: 96px 48px; }
 .overlay-close {
   position: absolute; top: 28px; right: 36px; background: #fff; color: #000;
