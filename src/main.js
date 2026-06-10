@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { makeCards } from './data.js';
 import { Gallery } from './gallery.js';
+import { Controls } from './controls.js';
 
 const app = document.getElementById('app');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -30,11 +31,15 @@ function loadImages(cards) {
   })));
 }
 
+gsap.ticker.lagSmoothing(0);
+
 const cards = makeCards();
 const images = await loadImages(cards);
 const gallery = new Gallery(scene, cards, images);
+const controls = new Controls(renderer.domElement, () => {});
 
 gsap.ticker.add(() => {
-  gallery.update(0, 0);
+  controls.tick();
+  gallery.update(controls.current.x, controls.current.y);
   renderer.render(scene, camera);
 });
