@@ -3,6 +3,7 @@ import { gsap } from 'gsap';
 import { makeCards } from './data.js';
 import { Gallery } from './gallery.js';
 import { Controls } from './controls.js';
+import { Overlay } from './overlay.js';
 
 const app = document.getElementById('app');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -54,15 +55,22 @@ function pick() {
   return hits.length ? hits[0].object : null;
 }
 
+const overlay = new Overlay();
+
 const controls = new Controls(renderer.domElement, () => {
   const mesh = pick();
-  if (mesh) console.log('card click:', mesh.userData.card.title);
+  if (mesh) {
+    controls.enabled = false;
+    gallery.setHover(null);
+    overlay.open(mesh.userData.card);
+  }
 });
+overlay.onCloseStart = () => { controls.enabled = true; };
 
 gsap.ticker.add(() => {
   controls.tick();
   gallery.update(controls.current.x, controls.current.y);
-  const hoverMesh = controls.dragging ? null : pick();
+  const hoverMesh = (controls.dragging || overlay.isOpen) ? null : pick();
   gallery.setHover(hoverMesh);
   document.body.classList.toggle('hover-card', !!hoverMesh && !controls.dragging);
   renderer.render(scene, camera);
