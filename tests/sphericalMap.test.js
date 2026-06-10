@@ -12,6 +12,8 @@ describe('wrapOffset', () => {
     expect(wrapOffset(-2.1, 4)).toBeCloseTo(1.9);
     expect(wrapOffset(4, 4)).toBeCloseTo(0);
     expect(wrapOffset(-13.9, 4)).toBeCloseTo(-1.9);
+    expect(wrapOffset(2, 4)).toBeCloseTo(-2);   // right boundary wraps (half-open)
+    expect(wrapOffset(-2, 4)).toBeCloseTo(-2);  // left boundary is included
   });
 });
 
@@ -58,6 +60,7 @@ describe('gridToSphere', () => {
       for (let r = 0; r < 10; r++) {
         const { visible, position } = gridToSphere(c, r, 1.23, -0.77, 10, 10);
         if (visible) {
+          expect(position[2]).toBeLessThan(0);
           expect(Math.abs(Math.atan2(position[0], -position[2]))).toBeLessThanOrEqual(VISIBLE_THETA + 1e-9);
           expect(Math.abs(Math.asin(position[1] / SPHERE_RADIUS))).toBeLessThanOrEqual(VISIBLE_PHI + 1e-9);
         }
