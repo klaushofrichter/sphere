@@ -7,6 +7,8 @@ a detail page in; closing it returns you exactly where you were.
 
 Inspired by the work gallery at [phantom.land](https://www.phantom.land/).
 
+**Live demo:** https://klaushofrichter.github.io/sphere/
+
 ## How it works
 
 The gallery is logically a flat 10×10 grid with a 2D scroll offset. Every frame,
@@ -24,7 +26,8 @@ extent — which is why the scroll is endless in both axes with no poles.
 
 ## Quick start
 
-Requires Node 18+ and desktop Chrome (the PoC targets Chrome only).
+Requires Node 22+ (or 20.19+; Vite 8's minimum) and desktop Chrome (the PoC
+targets Chrome only).
 
 ```bash
 npm install
@@ -48,6 +51,38 @@ and `npm run build` (production build).
 | Hover a card | Card brightens |
 | Click a card | Detail page animates in |
 | Escape / Close | Back to the gallery, position preserved |
+
+## Configuration (.env)
+
+The app itself needs no configuration — `.env` only feeds **GitHub repository
+secrets** used by CI. Copy `.env.example` to `.env` (gitignored), fill in the
+values, and upload them with:
+
+```bash
+./scripts/upload-secrets.sh   # uploads every NAME=VALUE line in .env as a repo secret
+```
+
+| Variable | Used by |
+|---|---|
+| `ANTHROPIC_API_KEY` | The Claude code-review workflow (`.github/workflows/pr-review.yml`), which posts an automated review comment on every PR. |
+| `TEST_USER`, `TEST_PASSWORD`, `VITE_EEN_CLIENT_ID`, `VITE_PROXY_URL` | Reserved for the later dynamic-image phase (fetching gallery images from a service) and authenticated e2e testing. Not read by any current code. |
+
+Secrets are write-only on GitHub: they can be replaced or deleted but never
+read back, and re-running the script overwrites existing values.
+
+## Branches, CI, and deployment
+
+- `develop` is the integration branch; `production` is deploy-only and accepts
+  changes exclusively through pull requests.
+- Every PR runs: unit tests, the Playwright e2e suite, a production-build smoke
+  test, CodeQL security analysis, and an advisory Claude code review. Four
+  checks are required to merge into `production`: `Unit Tests`, `E2E Tests`,
+  `Analyze (javascript-typescript)`, and the `CodeQL` alert verdict.
+- Merging to `production` triggers the deploy workflow: build → publish to
+  GitHub Pages → **live e2e verification against the deployed site** → on
+  success, a GitHub release tagged `v<version>-r<run>` with the exact deployed
+  build attached as a zip (see the
+  [releases page](https://github.com/klaushofrichter/sphere/releases)).
 
 ## Notes
 
