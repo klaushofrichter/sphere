@@ -35,7 +35,9 @@ async function settleGallery(page) {
 /** Navigate, wait for all images, and let the intro animation settle. */
 async function openGallery(page) {
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  // No networkidle: camera previews keep streaming in after mount.
+  // The canvas appearing means the gallery constructed (placeholders first).
+  await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
   await settleGallery(page);
 }
 
