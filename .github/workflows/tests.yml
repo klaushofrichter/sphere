@@ -42,6 +42,23 @@ jobs:
           TEST_USER: ${{ secrets.TEST_USER }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
       - run: npm run test:e2e:build
+      # Playwright's failure artifacts (error-context ARIA snapshots, report
+      # attachments) can contain the typed TEST_USER value if a run fails on
+      # the IdP login page. Scrub both values before uploading.
+      - name: Redact test credentials from report artifacts
+        if: failure()
+        env:
+          TEST_USER_VALUE: ${{ secrets.TEST_USER }}
+          TEST_PASSWORD_VALUE: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          for VAL in "$TEST_USER_VALUE" "$TEST_PASSWORD_VALUE"; do
+            [ -n "$VAL" ] || continue
+            grep -rlF "$VAL" playwright-report test-results 2>/dev/null \
+              | while read -r f; do
+                  VAL="$VAL" perl -i -pe 's/\Q$ENV{VAL}\E/REDACTED/g' "$f"
+                done
+          done
+        shell: bash
       - name: Upload Playwright report and traces
         if: failure()
         uses: actions/upload-artifact@v7
