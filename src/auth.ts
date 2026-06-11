@@ -55,6 +55,8 @@ export function login(): void {
 export async function completeCallback(): Promise<string | null> {
   const parsed = parseCallbackParams(window.location.search);
   if (!parsed) return null;
+  // Clean the URL before the exchange: auth codes are single-use, so keeping
+  // them in the URL would only enable a doomed retry on reload.
   history.replaceState(null, '', window.location.pathname);
   if ('error' in parsed) return parsed.error;
   const { error } = await handleAuthCallback(parsed.code, parsed.state);
@@ -69,7 +71,7 @@ export async function logout(): Promise<void> {
 /** One toolkit API call to prove end-to-end access; null on any error. */
 export async function fetchUserEmail(): Promise<string | null> {
   const { data, error } = await getCurrentUser();
-  return error ? null : ((data as { email?: string }).email ?? null);
+  return error ? null : (data.email ?? null);
 }
 
 export { useAuthStore };
