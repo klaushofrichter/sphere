@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import GalleryView from './views/GalleryView.vue';
 import LoginView from './views/LoginView.vue';
 import { authEnabled, completeCallback, fetchUserEmail, logout, useAuthStore } from './auth';
+import { initMedia } from './cameras';
 
 // ready gates rendering until session restore + callback handling are done,
 // so the login view doesn't flash before an existing session kicks in.
@@ -27,6 +28,7 @@ let emailRequest = 0;
 watch(isAuthed, async (authed) => {
   const req = ++emailRequest;
   if (authEnabled && authed) {
+    void initMedia(); // needed before multipartUrl streaming; failures surface in the video pane
     const email = await fetchUserEmail();
     if (req === emailRequest) userEmail.value = email;
   } else {
