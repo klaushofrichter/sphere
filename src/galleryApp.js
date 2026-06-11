@@ -18,7 +18,10 @@ function loadImages(cards) {
 }
 
 export async function startGallery(container) {
-  if (ctx) return; // already running
+  if (ctx) {
+    console.warn('startGallery called while a gallery is already running; ignoring');
+    return;
+  }
 
   const gen = ++startGen;
 
