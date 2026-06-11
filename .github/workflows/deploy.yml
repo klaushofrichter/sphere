@@ -82,6 +82,10 @@ jobs:
       # Playwright's failure artifacts (error-context ARIA snapshots, report
       # attachments) can contain the typed TEST_USER value if the journey
       # fails on the IdP login page. Scrub both values before uploading.
+      # The scrub is text-only (ARIA snapshots, report HTML): it cannot reach
+      # pixels in screenshots or strings inside compressed traces. Capture
+      # stays DISABLED for credential-bearing steps (see playwright configs);
+      # that disable is the primary guarantee, this step is the backstop.
       - name: Redact test credentials from report artifacts
         if: failure()
         env:
@@ -90,7 +94,7 @@ jobs:
         run: |
           for VAL in "$TEST_USER_VALUE" "$TEST_PASSWORD_VALUE"; do
             [ -n "$VAL" ] || continue
-            grep -rlF "$VAL" playwright-report test-results 2>/dev/null \
+            grep -rlFe "$VAL" playwright-report test-results 2>/dev/null \
               | while read -r f; do
                   VAL="$VAL" perl -i -pe 's/\Q$ENV{VAL}\E/REDACTED/g' "$f"
                 done

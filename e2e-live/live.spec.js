@@ -9,9 +9,11 @@ import { loginToEen } from '../e2e/helpers/eenLogin';
 const CENTER = { x: 640, y: 360 };
 const SETTLE_MS = 5_000;
 // Post-login URL expectation derives from the configured target so the spec
-// follows LIVE_BASE_URL instead of hardcoding the production host.
+// follows LIVE_BASE_URL instead of hardcoding the production host. Normalized
+// to a trailing slash so startsWith() matches on a path boundary (".../sphere/"
+// cannot match a sibling like ".../sphere-foo").
 const LIVE_BASE = (process.env.LIVE_BASE_URL || 'https://klaushofrichter.github.io/sphere/')
-  .replace(/\/$/, '');
+  .replace(/\/$/, '') + '/';
 
 async function canvasShot(page) {
   return page.locator('canvas').screenshot();
