@@ -35,6 +35,33 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  verify:
+    name: Live E2E Verification
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:live
+        env:
+          LIVE_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+      - name: Upload live test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-e2e-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
