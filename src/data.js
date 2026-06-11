@@ -18,6 +18,6 @@ export function makeCards() {
     title: `${QUALIFIERS[Math.floor(i / 10) % 10]} ${SUBJECTS[(i * 7) % 10]}`,
     tags: [TAGS[i % 10], TAGS[(i + 3) % 10]],
     year: 2017 + (i % 10),
-    image: `/assets/img-${i}.jpg`,
+    image: `${import.meta.env.BASE_URL}assets/img-${i}.jpg`,
   }));
 }
