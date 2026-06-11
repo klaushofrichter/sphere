@@ -16,10 +16,16 @@ export class Controls {
     this.last = null;
     this.velocity = { x: 0, y: 0 };
 
-    el.addEventListener('pointerdown', (e) => this.onDown(e));
-    window.addEventListener('pointermove', (e) => this.onMove(e));
-    window.addEventListener('pointerup', (e) => this.onUp(e));
-    window.addEventListener('pointercancel', () => this.cancel());
+    this.el = el;
+    this._onDown = (e) => this.onDown(e);
+    this._onMove = (e) => this.onMove(e);
+    this._onUp = (e) => this.onUp(e);
+    this._onCancel = () => this.cancel();
+
+    el.addEventListener('pointerdown', this._onDown);
+    window.addEventListener('pointermove', this._onMove);
+    window.addEventListener('pointerup', this._onUp);
+    window.addEventListener('pointercancel', this._onCancel);
   }
 
   onDown(e) {
@@ -75,5 +81,14 @@ export class Controls {
   tick() {
     this.current.x += (this.target.x - this.current.x) * EASE;
     this.current.y += (this.target.y - this.current.y) * EASE;
+  }
+
+  dispose() {
+    this.el.removeEventListener('pointerdown', this._onDown);
+    window.removeEventListener('pointermove', this._onMove);
+    window.removeEventListener('pointerup', this._onUp);
+    window.removeEventListener('pointercancel', this._onCancel);
+    gsap.killTweensOf(this.target);
+    document.body.classList.remove('dragging');
   }
 }

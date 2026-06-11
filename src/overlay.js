@@ -12,11 +12,13 @@ export class Overlay {
     this.isOpen = false;
     this.onCloseStart = null;
 
-    document.getElementById('overlay-close')
-      .addEventListener('click', () => this.close());
-    window.addEventListener('keydown', (e) => {
+    this._onCloseClick = () => this.close();
+    this._closeBtn = document.getElementById('overlay-close');
+    this._closeBtn.addEventListener('click', this._onCloseClick);
+    this._onKeydown = (e) => {
       if (e.key === 'Escape') this.close();
-    });
+    };
+    window.addEventListener('keydown', this._onKeydown);
   }
 
   open(card) {
@@ -53,5 +55,11 @@ export class Overlay {
         this.el.setAttribute('aria-hidden', 'true');
       },
     });
+  }
+
+  dispose() {
+    window.removeEventListener('keydown', this._onKeydown);
+    this._closeBtn.removeEventListener('click', this._onCloseClick);
+    gsap.killTweensOf([this.el, this.clientEl, this.titleEl, this.metaEl, this.imgEl]);
   }
 }
