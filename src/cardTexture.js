@@ -19,15 +19,19 @@ export function bakeCardTexture(card, image) {
   if (image) {
     ctx.drawImage(image, MARGIN_X, MARGIN_TOP, 640, 480);
   } else {
-    ctx.fillStyle = '#1a1a1a';
+    ctx.fillStyle = '#101010';
     ctx.fillRect(MARGIN_X, MARGIN_TOP, 640, 480);
+    ctx.fillStyle = '#444';
+    ctx.font = '600 28px "SF Mono", Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(card.pending ? 'LOADING…' : 'NO PREVIEW', W / 2, H / 2);
   }
 
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#fff';
   ctx.font = '600 17px "SF Mono", Menlo, monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(card.client.toUpperCase(), MARGIN_X, MARGIN_TOP / 2);
+  ctx.fillText('EEN', MARGIN_X, MARGIN_TOP / 2);
   ctx.textAlign = 'right';
   ctx.fillText(card.title.toUpperCase(), W - MARGIN_X, MARGIN_TOP / 2);
 
@@ -45,11 +49,6 @@ export function bakeCardTexture(card, image) {
     ctx.fillText(tag, x + 10, chipY + 1);
     x += tw + 30;
   }
-
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'right';
-  ctx.font = '600 15px "SF Mono", Menlo, monospace';
-  ctx.fillText(String(card.year), W - MARGIN_X, chipY);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
