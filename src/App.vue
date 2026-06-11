@@ -21,20 +21,22 @@ onMounted(async () => {
   ready.value = true;
 });
 
+// Request counter guards against out-of-order resolution if isAuthed
+// toggles while a fetch is in flight.
+let emailRequest = 0;
 watch(isAuthed, async (authed) => {
+  const req = ++emailRequest;
   if (authEnabled && authed) {
-    userEmail.value = await fetchUserEmail();
+    const email = await fetchUserEmail();
+    if (req === emailRequest) userEmail.value = email;
   } else {
     userEmail.value = null;
   }
 }, { immediate: true });
 
 async function onSignOut() {
-  try {
-    await logout();
-  } catch (e) {
-    authError.value = e instanceof Error ? e.message : 'Sign-out failed';
-  }
+  const err = await logout();
+  if (err) authError.value = `Sign-out issue: ${err}`;
 }
 </script>
 

@@ -56,8 +56,14 @@ export async function completeCallback(): Promise<string | null> {
   const parsed = parseCallbackParams(window.location.search);
   if (!parsed) return null;
   // Clean the URL before the exchange: auth codes are single-use, so keeping
-  // them in the URL would only enable a doomed retry on reload.
-  history.replaceState(null, '', window.location.pathname);
+  // them in the URL would only enable a doomed retry on reload. Strip only
+  // the OAuth params; preserve any other query values and the hash.
+  const url = new URL(window.location.href);
+  url.searchParams.delete('code');
+  url.searchParams.delete('state');
+  url.searchParams.delete('error');
+  const qs = url.searchParams.toString();
+  history.replaceState(null, '', url.pathname + (qs ? `?${qs}` : '') + url.hash);
   if ('error' in parsed) return parsed.error;
   const { error } = await handleAuthCallback(parsed.code, parsed.state);
   return error ? error.message : null;
@@ -65,11 +71,14 @@ export async function completeCallback(): Promise<string | null> {
 
 /**
  * Revoke the token (proxy clears the session) and reset auth state.
- * revokeToken() resets the toolkit's Pinia store (isAuthenticated → false);
- * the UI's return to the login view relies on that store mutation.
+ * revokeToken() resets the toolkit's Pinia store (isAuthenticated → false)
+ * on success AND on failure, so the UI always returns to the login view;
+ * a failure is reported via the returned error message (toolkit functions
+ * never throw).
  */
-export async function logout(): Promise<void> {
-  await revokeToken();
+export async function logout(): Promise<string | null> {
+  const { error } = await revokeToken();
+  return error ? error.message : null;
 }
 
 /** One toolkit API call to prove end-to-end access; null on any error. */

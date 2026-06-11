@@ -39,15 +39,22 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
+  // Trace policy: setup and authenticated projects must not expose credentials
+  // or session tokens in CI artifacts. setup fills the password (trace: off
+  // always). gallery (auth) and signout carry session tokens (trace: off in CI,
+  // on-first-retry locally). Unauthenticated projects inherit the top-level
+  // trace setting (on-first-retry), which is safe.
   projects: authMode
     ? [
         // Real EEN login once per run; saves session for the gallery project.
-        { name: 'setup', testMatch: /auth\.setup\.ts/ },
+        // trace: off — this project fills the password; never record it.
+        { name: 'setup', testMatch: /auth\.setup\.ts/, use: { trace: 'off' } },
         {
           name: 'gallery',
           testMatch: /gallery\.spec\.js/,
           dependencies: ['setup'],
-          use: { storageState: 'playwright/.auth/user.json' },
+          // Session token in storageState; allow traces locally, not in CI.
+          use: { storageState: 'playwright/.auth/user.json', trace: process.env.CI ? 'off' : 'on-first-retry' },
         },
         // Guard spec runs WITHOUT stored auth state.
         { name: 'auth', testMatch: /auth\.spec\.ts/ },
@@ -56,7 +63,11 @@ export default defineConfig({
           name: 'signout',
           testMatch: /signout\.spec\.ts/,
           dependencies: ['setup', 'gallery'],
-          use: { storageState: 'playwright/.auth/user.json' },
+          // retries: 0 — a retried signout starts with a revoked session and
+          // fails misleadingly; disable retries for this project.
+          retries: 0,
+          // Session token in storageState; allow traces locally, not in CI.
+          use: { storageState: 'playwright/.auth/user.json', trace: process.env.CI ? 'off' : 'on-first-retry' },
         },
       ]
     : [
