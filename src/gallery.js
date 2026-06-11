@@ -48,7 +48,7 @@ export class Gallery {
   dispose() {
     gsap.killTweensOf(this.meshes.map((m) => m.material.color));
     for (const mesh of this.meshes) {
-      mesh.material.map.dispose();
+      mesh.material.map?.dispose();
       mesh.material.dispose();
     }
     this.geo.dispose();
