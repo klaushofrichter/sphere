@@ -7,6 +7,10 @@ on:
       - production
       - develop
 
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit:
     name: Unit Tests
@@ -32,6 +36,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - run: npm run test:e2e:build
       - name: Upload Playwright report and traces
         if: failure()
         uses: actions/upload-artifact@v4

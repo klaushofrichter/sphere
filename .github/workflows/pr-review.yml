@@ -38,10 +38,14 @@ jobs:
 
       - name: Read additional review prompts
         id: read-prompts
+        env:
+          # Only trust the prompt file on same-repo PRs: a fork PR could edit
+          # claude-review.md to inject instructions into the review prompt.
+          SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           PROMPT_FILE=".github/claude-review.md"
           MAX_SIZE=4096  # Limit to 4KB to prevent prompt overflow
-          if [ -f "$PROMPT_FILE" ]; then
+          if [ "$SAME_REPO" = "true" ] && [ -f "$PROMPT_FILE" ]; then
             FILE_SIZE=$(wc -c < "$PROMPT_FILE")
             if [ "$FILE_SIZE" -gt "$MAX_SIZE" ]; then
               echo "::error::claude-review.md exceeds ${MAX_SIZE} bytes (${FILE_SIZE} bytes). Please reduce file size to prevent instructions being cut off."
@@ -53,6 +57,9 @@ jobs:
             done
             echo "extra_prompt<<${DELIMITER}" >> $GITHUB_OUTPUT
             cat "$PROMPT_FILE" >> $GITHUB_OUTPUT
+            # Guard against a prompt file without a trailing newline, which
+            # would glue its last line to the delimiter and break the heredoc.
+            printf '\n' >> $GITHUB_OUTPUT
             echo "${DELIMITER}" >> $GITHUB_OUTPUT
           else
             # No custom prompts file found - continue with default prompts only

@@ -33,8 +33,11 @@ npm run dev            # open http://localhost:5173
 ```
 
 Other scripts: `npm test` (unit tests), `npm run test:e2e` (Playwright end-to-end
-tests in Chromium — first run `npx playwright install chromium`), and
-`npm run build` (production build).
+tests in Chromium — first run `npx playwright install chromium`; on Linux use
+`npx playwright install --with-deps chromium` to pull system libraries),
+`npm run test:e2e:build` (smoke test of the production build under the
+GitHub Pages base path), `npm run test:e2e:live` (verifies the deployed site),
+and `npm run build` (production build).
 
 ## Controls
 

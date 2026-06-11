@@ -13,6 +13,10 @@ async function canvasShot(page) {
  * window.__sphere test hook — deterministic and CI-speed-independent,
  * unlike diffing canvas pixels (the lerp tail keeps frames sub-pixel
  * different for a long time on slow software WebGL).
+ *
+ * Coupling note: this assumes the gallery is idle once current~=target.
+ * If an always-on idle animation (e.g. auto-rotation) is ever added,
+ * "settled" needs a new definition and these tests will time out here.
  */
 async function settleGallery(page) {
   await page.waitForFunction(
@@ -77,7 +81,7 @@ test.describe('sphere gallery', () => {
     expect(center.equals(corner)).toBe(false);
   });
 
-  test('dragging scrolls the gallery and momentum continues after release', async ({ page }) => {
+  test('dragging scrolls the gallery and easing continues after release', async ({ page }) => {
     await openGallery(page);
     const before = await canvasShot(page);
 
@@ -89,11 +93,13 @@ test.describe('sphere gallery', () => {
     const justReleased = await canvasShot(page);
     expect(justReleased.equals(before)).toBe(false);
 
-    // Momentum: rendering keeps changing after the pointer is released.
+    // Rendering keeps changing after the pointer is released. Note: this
+    // covers the eased lerp tail and/or the fling tween — it does not
+    // isolate fling momentum specifically (the lerp alone would pass it).
     await expect
       .poll(async () => (await canvasShot(page)).equals(justReleased), {
         timeout: 3_000,
-        message: 'canvas froze immediately on release — no momentum?',
+        message: 'canvas froze immediately on release — no easing?',
       })
       .toBe(false);
   });

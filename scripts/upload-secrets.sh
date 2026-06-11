@@ -22,7 +22,10 @@ fi
 
 REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
 
-# Count variable lines (NAME=VALUE; ignores comments and blank lines).
+# Advisory count of NAME=VALUE lines (ignores comments and blanks). The
+# authoritative parsing is done by `gh secret set -f`, which also accepts
+# forms this regex misses (e.g. "export FOO=", quoted multiline values) —
+# the count is only used for the empty-file guard and the status message.
 VAR_COUNT=$(grep -cE '^[A-Za-z_][A-Za-z0-9_]*=' "$ENV_FILE" || true)
 if [ "$VAR_COUNT" -eq 0 ]; then
   echo "error: no NAME=VALUE lines found in '$ENV_FILE'" >&2

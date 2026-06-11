@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Dev-server e2e suite (e2e/). The production-build smoke test lives in
+// e2e-build/ with its own config (playwright.build.config.js) so these runs
+// don't pay for a vite build. The live-site suite is playwright.live.config.js.
 export default defineConfig({
   testDir: 'e2e',
   timeout: 30_000,
@@ -12,20 +15,10 @@ export default defineConfig({
     viewport: { width: 1280, height: 720 },
     trace: 'on-first-retry',
   },
-  webServer: [
-    {
-      command: 'npx vite --port 5173',
-      url: 'http://localhost:5173',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
-    {
-      // Production-base smoke target: build with base /sphere/ and serve the
-      // dist via vite preview (base comes from vite.config.js + SPHERE_BASE).
-      command: 'SPHERE_BASE=/sphere/ npx vite build && SPHERE_BASE=/sphere/ npx vite preview --port 4173',
-      url: 'http://localhost:4173/sphere/',
-      reuseExistingServer: !process.env.CI,
-      timeout: 180_000,
-    },
-  ],
+  webServer: {
+    command: 'npx vite --port 5173',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
 });
