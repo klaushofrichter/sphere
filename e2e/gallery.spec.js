@@ -1,18 +1,50 @@
 import { test, expect } from '@playwright/test';
 
 const CENTER = { x: 640, y: 360 };
-const INTRO_MS = 2600; // intro zoom/drift is 1.8s; allow settle
-
-/** Navigate, wait for all images + intro animation to finish. */
-async function openGallery(page) {
-  await page.goto('/');
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(INTRO_MS);
-}
 
 /** Grab the rendered canvas pixels as a screenshot buffer. */
 async function canvasShot(page) {
   return page.locator('canvas').screenshot();
+}
+
+/**
+ * Wait until two consecutive frames are identical — i.e. the intro animation
+ * (or any momentum) has finished. Robust against intro-duration changes.
+ */
+async function settleCanvas(page) {
+  let prev = await canvasShot(page);
+  await expect
+    .poll(
+      async () => {
+        await page.waitForTimeout(250);
+        const cur = await canvasShot(page);
+        const same = cur.equals(prev);
+        prev = cur;
+        return same;
+      },
+      { timeout: 15_000, message: 'canvas never settled (intro/momentum still running?)' },
+    )
+    .toBe(true);
+}
+
+/** Navigate, wait for all images, and let the intro animation settle. */
+async function openGallery(page) {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await settleCanvas(page);
+}
+
+/**
+ * Move the pointer to the viewport center and assert a card is actually
+ * raycast-hit there (body gets the hover-card class) before interacting.
+ * Fails loudly if a layout change ever leaves a gap at center.
+ */
+async function hoverCenterCard(page) {
+  await page.mouse.move(CENTER.x, CENTER.y);
+  await expect(
+    page.locator('body'),
+    'no card under the viewport center — did the sphere layout change?',
+  ).toHaveClass(/hover-card/);
 }
 
 test.describe('sphere gallery', () => {
@@ -21,7 +53,10 @@ test.describe('sphere gallery', () => {
     const pageErrors = [];
     const failedAssets = [];
     page.on('console', (msg) => {
-      if (msg.type() === 'error') consoleErrors.push(msg.text());
+      // favicon 404s and similar noise are not app failures
+      if (msg.type() === 'error' && !msg.text().includes('favicon')) {
+        consoleErrors.push(msg.text());
+      }
     });
     page.on('pageerror', (err) => pageErrors.push(String(err)));
     page.on('requestfailed', (req) => {
@@ -35,9 +70,10 @@ test.describe('sphere gallery', () => {
     expect(consoleErrors).toEqual([]);
     expect(failedAssets).toEqual([]);
 
-    // The canvas must not be a blank black frame: at least some variation.
-    const shot = await canvasShot(page);
-    expect(shot.length).toBeGreaterThan(10_000); // PNG of real content, not a flat fill
+    // Not a flat fill: the center (cards) must differ from the corner (vignette).
+    const center = await page.screenshot({ clip: { x: 540, y: 260, width: 200, height: 200 } });
+    const corner = await page.screenshot({ clip: { x: 0, y: 0, width: 200, height: 200 } });
+    expect(center.equals(corner)).toBe(false);
   });
 
   test('dragging scrolls the gallery and momentum continues after release', async ({ page }) => {
@@ -53,21 +89,23 @@ test.describe('sphere gallery', () => {
     expect(justReleased.equals(before)).toBe(false);
 
     // Momentum: rendering keeps changing after the pointer is released.
-    await page.waitForTimeout(400);
-    const later = await canvasShot(page);
-    expect(later.equals(justReleased)).toBe(false);
+    await expect
+      .poll(async () => (await canvasShot(page)).equals(justReleased), {
+        timeout: 3_000,
+        message: 'canvas froze immediately on release — no momentum?',
+      })
+      .toBe(false);
   });
 
   test('hovering a card sets the pointer-cursor class on body', async ({ page }) => {
     await openGallery(page);
-    await page.mouse.move(CENTER.x, CENTER.y);
-    await expect(page.locator('body')).toHaveClass(/hover-card/);
+    await hoverCenterCard(page);
   });
 
   test('a click opens the overlay with populated content', async ({ page }) => {
     await openGallery(page);
 
-    await page.mouse.move(CENTER.x, CENTER.y);
+    await hoverCenterCard(page);
     await page.mouse.down();
     await page.mouse.up();
 
@@ -83,11 +121,11 @@ test.describe('sphere gallery', () => {
   test('a drag does NOT open the overlay', async ({ page }) => {
     await openGallery(page);
 
-    await page.mouse.move(CENTER.x, CENTER.y);
+    await hoverCenterCard(page);
     await page.mouse.down();
     await page.mouse.move(CENTER.x - 300, CENTER.y, { steps: 10 });
     await page.mouse.up();
-    await page.waitForTimeout(300);
+    await settleCanvas(page);
 
     await expect(page.locator('#overlay')).toBeHidden();
   });
@@ -96,7 +134,7 @@ test.describe('sphere gallery', () => {
     await openGallery(page);
 
     // open
-    await page.mouse.move(CENTER.x, CENTER.y);
+    await hoverCenterCard(page);
     await page.mouse.down();
     await page.mouse.up();
     await expect(page.locator('#overlay')).toBeVisible();
@@ -119,7 +157,7 @@ test.describe('sphere gallery', () => {
   test('close button closes the overlay', async ({ page }) => {
     await openGallery(page);
 
-    await page.mouse.move(CENTER.x, CENTER.y);
+    await hoverCenterCard(page);
     await page.mouse.down();
     await page.mouse.up();
     await expect(page.locator('#overlay')).toBeVisible();
