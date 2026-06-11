@@ -12,8 +12,9 @@ export class Overlay {
     this.isOpen = false;
     this.onCloseStart = null;
 
-    document.getElementById('overlay-close')
-      .addEventListener('click', () => this.close());
+    this._onCloseClick = () => this.close();
+    this._closeBtn = document.getElementById('overlay-close');
+    this._closeBtn.addEventListener('click', this._onCloseClick);
     this._onKeydown = (e) => {
       if (e.key === 'Escape') this.close();
     };
@@ -58,6 +59,7 @@ export class Overlay {
 
   dispose() {
     window.removeEventListener('keydown', this._onKeydown);
-    gsap.killTweensOf(this.el);
+    this._closeBtn.removeEventListener('click', this._onCloseClick);
+    gsap.killTweensOf([this.el, this.clientEl, this.titleEl, this.metaEl, this.imgEl]);
   }
 }

@@ -111,6 +111,7 @@ export function destroyGallery() {
   window.removeEventListener('pointermove', ctx.onPointerMove);
   ctx.controls.dispose();
   ctx.overlay.dispose();
+  ctx.gallery.dispose();
   ctx.renderer.dispose();
   ctx.renderer.domElement.remove();
   document.body.classList.remove('hover-card', 'dragging');
