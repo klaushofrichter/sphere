@@ -127,7 +127,9 @@ test.describe('sphere gallery', () => {
     // Stream or a clean error: the feed URL comes from the real account.
     const stream = page.locator('#video-stream[src]');
     const paneError = page.getByTestId('video-error');
-    await expect(stream.or(paneError)).toBeVisible({ timeout: 20_000 });
+    // .first(): the hidden error element always matches the testid locator, so
+    // the or-set can contain two nodes; DOM order puts the stream first.
+    await expect(stream.or(paneError).first()).toBeVisible({ timeout: 20_000 });
   });
 
   test('a drag does NOT open the overlay', async ({ page }) => {

@@ -147,7 +147,8 @@ export async function fetchAllCameras(): Promise<{ cameras: Camera[] | null; err
   const all: Camera[] = [];
   let pageToken: string | undefined;
   do {
-    const { data, error } = await getCameras(pageToken ? { pageToken } : undefined);
+    // The list endpoint omits status unless explicitly included.
+    const { data, error } = await getCameras({ include: ['status'], ...(pageToken ? { pageToken } : {}) });
     if (error) return { cameras: null, error: error.message };
     all.push(...data.results);
     pageToken = data.nextPageToken;
