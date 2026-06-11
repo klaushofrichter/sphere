@@ -6,6 +6,7 @@ import { Controls } from './controls.js';
 import { Overlay } from './overlay.js';
 
 let ctx = null;
+let startGen = 0;
 
 function loadImages(cards) {
   return Promise.all(cards.map((c) => new Promise((resolve) => {
@@ -18,6 +19,8 @@ function loadImages(cards) {
 
 export async function startGallery(container) {
   if (ctx) return; // already running
+
+  const gen = ++startGen;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -41,6 +44,14 @@ export async function startGallery(container) {
 
   const cards = makeCards();
   const images = await loadImages(cards);
+  // destroyGallery() during the image load (or a quick logout/login cycle)
+  // bumps startGen: abandon this start and release what was already created.
+  if (gen !== startGen) {
+    window.removeEventListener('resize', onResize);
+    renderer.dispose();
+    renderer.domElement.remove();
+    return;
+  }
   const gallery = new Gallery(scene, cards, images);
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
@@ -104,6 +115,7 @@ export async function startGallery(container) {
 }
 
 export function destroyGallery() {
+  startGen++; // cancels any in-flight startGallery
   if (!ctx) return;
   gsap.ticker.remove(ctx.tick);
   gsap.killTweensOf(ctx.camera);

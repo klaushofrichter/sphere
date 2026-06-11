@@ -6,6 +6,17 @@ import { loadEnv } from 'vite';
 const fileEnv = loadEnv('', process.cwd(), '');
 process.env.TEST_USER ??= fileEnv.TEST_USER;
 process.env.TEST_PASSWORD ??= fileEnv.TEST_PASSWORD;
+process.env.VITE_PROXY_URL ??= fileEnv.VITE_PROXY_URL;
+process.env.VITE_EEN_CLIENT_ID ??= fileEnv.VITE_EEN_CLIENT_ID;
+
+// Auth mode needs the app's auth switch AND login credentials. Anything less
+// (open-mode invocations, forks without secrets) runs the open-mode suite.
+const authMode = Boolean(
+  process.env.VITE_PROXY_URL &&
+  process.env.VITE_EEN_CLIENT_ID &&
+  process.env.TEST_USER &&
+  process.env.TEST_PASSWORD,
+);
 
 // Dev-server e2e suite (e2e/). The production-build smoke test lives in
 // e2e-build/ with its own config (playwright.build.config.js) so these runs
@@ -28,24 +39,28 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
-  projects: [
-    // Real EEN login once per run; saves session for the gallery project.
-    { name: 'setup', testMatch: /auth\.setup\.ts/ },
-    // Existing gallery suite runs authenticated via the saved session.
-    {
-      name: 'gallery',
-      testMatch: /gallery\.spec\.js/,
-      dependencies: ['setup'],
-      use: { storageState: 'playwright/.auth/user.json' },
-    },
-    // Guard spec runs WITHOUT stored auth state.
-    { name: 'auth', testMatch: /auth\.spec\.ts/ },
-    // Sign-out revokes the shared session, so it must run after gallery.
-    {
-      name: 'signout',
-      testMatch: /signout\.spec\.ts/,
-      dependencies: ['setup', 'gallery'],
-      use: { storageState: 'playwright/.auth/user.json' },
-    },
-  ],
+  projects: authMode
+    ? [
+        // Real EEN login once per run; saves session for the gallery project.
+        { name: 'setup', testMatch: /auth\.setup\.ts/ },
+        {
+          name: 'gallery',
+          testMatch: /gallery\.spec\.js/,
+          dependencies: ['setup'],
+          use: { storageState: 'playwright/.auth/user.json' },
+        },
+        // Guard spec runs WITHOUT stored auth state.
+        { name: 'auth', testMatch: /auth\.spec\.ts/ },
+        // Sign-out revokes the shared session, so it must run after gallery.
+        {
+          name: 'signout',
+          testMatch: /signout\.spec\.ts/,
+          dependencies: ['setup', 'gallery'],
+          use: { storageState: 'playwright/.auth/user.json' },
+        },
+      ]
+    : [
+        // Open mode: no login exists; auth/signout specs don't apply.
+        { name: 'gallery', testMatch: /gallery\.spec\.js/ },
+      ],
 });

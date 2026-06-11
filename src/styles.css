@@ -7,7 +7,6 @@ body {
 }
 body.dragging { cursor: grabbing; }
 body.hover-card { cursor: pointer; }
-#app canvas { position: fixed; inset: 0; display: block; }
 .vignette {
   position: fixed; inset: 0; pointer-events: none;
   background: radial-gradient(ellipse 80% 65% at 50% 50%,
