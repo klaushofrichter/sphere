@@ -15,6 +15,7 @@ export class Gallery {
     const width = 2 * SPHERE_RADIUS * Math.tan(THETA_STEP / 2) * (1 - GAP);
     const height = width / CARD_ASPECT;
     const geo = new THREE.PlaneGeometry(width, height);
+    this.geo = geo;
 
     this.meshes = cards.map((card, i) => {
       const tex = bakeCardTexture(card, images[i]);
@@ -42,6 +43,16 @@ export class Gallery {
         mesh.lookAt(0, 0, 0);
       }
     }
+  }
+
+  dispose() {
+    gsap.killTweensOf(this.meshes.map((m) => m.material.color));
+    for (const mesh of this.meshes) {
+      mesh.material.map.dispose();
+      mesh.material.dispose();
+    }
+    this.geo.dispose();
+    this.group.removeFromParent();
   }
 
   setHover(mesh) {

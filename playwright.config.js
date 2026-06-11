@@ -1,4 +1,22 @@
 import { defineConfig, devices } from '@playwright/test';
+import { loadEnv } from 'vite';
+
+// Playwright's node process doesn't read .env (only Vite does). Load the
+// test credentials from it for local runs; real env vars (CI) win.
+const fileEnv = loadEnv('', process.cwd(), '');
+process.env.TEST_USER ??= fileEnv.TEST_USER;
+process.env.TEST_PASSWORD ??= fileEnv.TEST_PASSWORD;
+process.env.VITE_PROXY_URL ??= fileEnv.VITE_PROXY_URL;
+process.env.VITE_EEN_CLIENT_ID ??= fileEnv.VITE_EEN_CLIENT_ID;
+
+// Auth mode needs the app's auth switch AND login credentials. Anything less
+// (open-mode invocations, forks without secrets) runs the open-mode suite.
+const authMode = Boolean(
+  process.env.VITE_PROXY_URL &&
+  process.env.VITE_EEN_CLIENT_ID &&
+  process.env.TEST_USER &&
+  process.env.TEST_PASSWORD,
+);
 
 // Dev-server e2e suite (e2e/). The production-build smoke test lives in
 // e2e-build/ with its own config (playwright.build.config.js) so these runs
@@ -11,14 +29,38 @@ export default defineConfig({
   use: {
     // Device spread first so the explicit settings below always win.
     ...devices['Desktop Chrome'],
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://127.0.0.1:3333',
     viewport: { width: 1280, height: 720 },
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npx vite --port 5173',
-    url: 'http://localhost:5173',
+    command: 'npx vite',
+    url: 'http://127.0.0.1:3333',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
+  projects: authMode
+    ? [
+        // Real EEN login once per run; saves session for the gallery project.
+        { name: 'setup', testMatch: /auth\.setup\.ts/ },
+        {
+          name: 'gallery',
+          testMatch: /gallery\.spec\.js/,
+          dependencies: ['setup'],
+          use: { storageState: 'playwright/.auth/user.json' },
+        },
+        // Guard spec runs WITHOUT stored auth state.
+        { name: 'auth', testMatch: /auth\.spec\.ts/ },
+        // Sign-out revokes the shared session, so it must run after gallery.
+        {
+          name: 'signout',
+          testMatch: /signout\.spec\.ts/,
+          dependencies: ['setup', 'gallery'],
+          use: { storageState: 'playwright/.auth/user.json' },
+        },
+      ]
+    : [
+        // Open mode: no login exists; auth/signout specs don't apply.
+        { name: 'gallery', testMatch: /gallery\.spec\.js/ },
+      ],
 });

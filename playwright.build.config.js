@@ -15,7 +15,8 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'SPHERE_BASE=/sphere/ npx vite build && SPHERE_BASE=/sphere/ npx vite preview --port 4173',
+    command:
+      'VITE_PROXY_URL= VITE_EEN_CLIENT_ID= SPHERE_BASE=/sphere/ npx vite build && SPHERE_BASE=/sphere/ npx vite preview --port 4173',
     url: 'http://localhost:4173/sphere/',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
