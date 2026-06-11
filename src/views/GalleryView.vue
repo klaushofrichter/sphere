@@ -4,7 +4,7 @@ import { startGallery, destroyGallery } from '../galleryApp.js';
 
 const root = ref(null);
 
-onMounted(() => { startGallery(root.value); });
+onMounted(async () => { await startGallery(root.value); });
 onUnmounted(() => { destroyGallery(); });
 </script>
 

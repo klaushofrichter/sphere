@@ -15,7 +15,7 @@ const isAuthed = computed(() => !authEnabled || Boolean(store?.isAuthenticated))
 
 onMounted(async () => {
   if (!authEnabled) return;
-  store!.initialize(); // restore session from localStorage if present
+  await store!.initialize(); // restore session from localStorage if present
   const err = await completeCallback();
   if (err) authError.value = err;
   ready.value = true;
