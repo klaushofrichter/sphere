@@ -185,7 +185,11 @@ export async function loadCameraCards(
   const worker = async () => {
     for (let d = queue.shift(); d !== undefined; d = queue.shift()) {
       const { data } = await getLiveImage({ deviceId: d });
-      onPreview(d, data ? data.imageData : null);
+      try {
+        onPreview(d, data ? data.imageData : null);
+      } catch (e) {
+        console.warn('onPreview callback failed:', e);
+      }
     }
   };
   void Promise.all(Array.from({ length: Math.min(PREVIEW_CONCURRENCY, queue.length) }, worker));
