@@ -11,13 +11,13 @@ export default defineConfig({
   use: {
     // Device spread first so the explicit settings below always win.
     ...devices['Desktop Chrome'],
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://127.0.0.1:3333',
     viewport: { width: 1280, height: 720 },
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npx vite --port 5173',
-    url: 'http://localhost:5173',
+    command: 'npx vite',
+    url: 'http://127.0.0.1:3333',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
