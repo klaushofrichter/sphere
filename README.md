@@ -32,7 +32,12 @@ npm run fetch-images   # one-time: downloads 100 sample 640x480 images into publ
 npm run dev            # open http://localhost:5173
 ```
 
-Other scripts: `npm test` (unit tests), `npm run build` (production build).
+Other scripts: `npm test` (unit tests), `npm run test:e2e` (Playwright end-to-end
+tests in Chromium — first run `npx playwright install chromium`; on Linux use
+`npx playwright install --with-deps chromium` to pull system libraries),
+`npm run test:e2e:build` (smoke test of the production build under the
+GitHub Pages base path), `npm run test:e2e:live` (verifies the deployed site),
+and `npm run build` (production build).
 
 ## Controls
 
