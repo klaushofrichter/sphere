@@ -16,6 +16,7 @@ export function bakeCardTexture(card, image) {
 
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = 'middle';
   if (image) {
     ctx.drawImage(image, MARGIN_X, MARGIN_TOP, 640, 480);
   } else {
@@ -26,8 +27,6 @@ export function bakeCardTexture(card, image) {
     ctx.textAlign = 'center';
     ctx.fillText(card.pending ? 'LOADING…' : 'NO PREVIEW', W / 2, H / 2);
   }
-
-  ctx.textBaseline = 'middle';
   ctx.fillStyle = '#fff';
   ctx.font = '600 17px "SF Mono", Menlo, monospace';
   ctx.textAlign = 'left';
