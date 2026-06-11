@@ -36,6 +36,11 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+        env:
+          VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          VITE_EEN_CLIENT_ID: ${{ secrets.VITE_EEN_CLIENT_ID }}
+          TEST_USER: ${{ secrets.TEST_USER }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
       - run: npm run test:e2e:build
       - name: Upload Playwright report and traces
         if: failure()

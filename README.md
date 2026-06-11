@@ -23,7 +23,9 @@ extent — which is why the scroll is endless in both axes with no poles.
 - **Motion:** [GSAP](https://gsap.com/) — drag inertia, fling momentum, hover
   brightening, the detail-overlay timeline, and the intro zoom.
 - **Tooling:** [Vite](https://vite.dev/) + [Vitest](https://vitest.dev/) (the
-  grid→sphere math and card data are unit tested).
+  grid→sphere math, card data, and auth helpers are unit tested), with a
+  [Vue 3](https://vuejs.org/) + [Pinia](https://pinia.vuejs.org/) shell for
+  authentication.
 
 ## Quick start
 
@@ -33,8 +35,12 @@ targets Chrome only).
 ```bash
 npm install
 npm run fetch-images   # one-time: downloads 100 sample 640x480 images into public/assets
-npm run dev            # open http://localhost:5173
+npm run dev            # open http://127.0.0.1:3333
 ```
+
+> The dev server binds `http://127.0.0.1:3333` exactly — the EEN Identity
+> Provider only accepts that redirect URI, so `localhost` will not work for
+> login.
 
 Other scripts: `npm test` (unit tests), `npm run test:e2e` (Playwright end-to-end
 tests in Chromium — first run `npx playwright install chromium`; on Linux use
@@ -42,6 +48,24 @@ tests in Chromium — first run `npx playwright install chromium`; on Linux use
 `npm run test:e2e:build` (smoke test of the production build under the
 GitHub Pages base path), `npm run test:e2e:live` (verifies the deployed site),
 and `npm run build` (production build).
+
+## Authentication
+
+With `VITE_PROXY_URL` and `VITE_EEN_CLIENT_ID` set (see `.env.example`), the
+app requires an Eagle Eye Networks sign-in before showing the gallery: OAuth
+runs against the EEN Identity Provider through
+[een-oauth-proxy](https://github.com/klaushofrichter/een-oauth-proxy), using
+[een-api-toolkit](https://github.com/klaushofrichter/een-api-toolkit) (Vue 3 +
+Pinia). The proxy keeps `CLIENT_SECRET` and refresh tokens server-side.
+
+Without those two variables the app builds in **open mode** — no login, the
+gallery is public. The GitHub Pages deployment builds without them, so the
+live demo stays open.
+
+Auth e2e: the Playwright `setup` project performs a real EEN login with
+`TEST_USER`/`TEST_PASSWORD` (locally from `.env`, in CI from repo secrets) and
+the gallery suite runs authenticated; `auth.spec.ts` verifies the guard and
+`signout.spec.ts` the logout flow.
 
 ## Controls
 
@@ -55,9 +79,11 @@ and `npm run build` (production build).
 
 ## Configuration (.env)
 
-The app itself needs no configuration — `.env` only feeds **GitHub repository
-secrets** used by CI. Copy `.env.example` to `.env` (gitignored), fill in the
-values, and upload them with:
+`.env` configures local development (the auth switch reads the `VITE_` values)
+and feeds **GitHub repository secrets** used by CI:
+
+Copy `.env.example` to `.env` (gitignored), fill in the values, and upload
+them with:
 
 ```bash
 ./scripts/upload-secrets.sh   # uploads every NAME=VALUE line in .env as a repo secret
@@ -66,7 +92,8 @@ values, and upload them with:
 | Variable | Used by |
 |---|---|
 | `ANTHROPIC_API_KEY` | The Claude code-review workflow (`.github/workflows/pr-review.yml`), which posts an automated review comment on every PR. |
-| `TEST_USER`, `TEST_PASSWORD`, `VITE_EEN_CLIENT_ID`, `VITE_PROXY_URL` | Reserved for the later dynamic-image phase (fetching gallery images from a service) and authenticated e2e testing. Not read by any current code. |
+| `VITE_PROXY_URL`, `VITE_EEN_CLIENT_ID` | The auth build switch: present → the app requires EEN sign-in (dev + CI e2e); absent → open mode (GitHub Pages). |
+| `TEST_USER`, `TEST_PASSWORD` | The EEN test account used by the Playwright auth setup for real-login e2e (local + CI). |
 
 Secrets are write-only on GitHub: they can be replaced or deleted but never
 read back, and re-running the script overwrites existing values.
