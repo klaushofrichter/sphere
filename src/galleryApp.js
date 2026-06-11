@@ -5,6 +5,7 @@ import { bakeCardTexture } from './cardTexture.js';
 import { Gallery } from './gallery.js';
 import { Controls } from './controls.js';
 import { Overlay } from './overlay.js';
+import { VideoPane } from './videoPane.js';
 
 let ctx = null;
 let startGen = 0;
@@ -89,6 +90,7 @@ export async function startGallery(container) {
   }
 
   const overlay = new Overlay();
+  const videoPane = new VideoPane();
 
   const controls = new Controls(renderer.domElement, () => {
     const mesh = pick();
@@ -96,9 +98,13 @@ export async function startGallery(container) {
       controls.enabled = false;
       gallery.setHover(null);
       overlay.open(mesh.userData.card);
+      videoPane.open(mesh.userData.card.deviceId);
     }
   });
-  overlay.onCloseStart = () => { controls.enabled = true; };
+  overlay.onCloseStart = () => {
+    controls.enabled = true;
+    videoPane.close();
+  };
 
   const tick = () => {
     controls.tick();
@@ -127,7 +133,7 @@ export async function startGallery(container) {
     window.__sphere = { controls };
   }
 
-  ctx = { renderer, gallery, overlay, controls, tick, onResize, onPointerMove, camera };
+  ctx = { renderer, gallery, overlay, videoPane, controls, tick, onResize, onPointerMove, camera };
 }
 
 export function destroyGallery() {
@@ -139,6 +145,7 @@ export function destroyGallery() {
   window.removeEventListener('pointermove', ctx.onPointerMove);
   ctx.controls.dispose();
   ctx.overlay.dispose();
+  ctx.videoPane.dispose();
   ctx.gallery.dispose();
   ctx.renderer.dispose();
   ctx.renderer.forceContextLoss(); // release the GL context so cycles don't exhaust the ~16-context cap

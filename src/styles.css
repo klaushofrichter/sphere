@@ -57,3 +57,11 @@ body.hover-card { cursor: pointer; }
   cursor: pointer;
 }
 .user-chip-button:hover { color: #fff; border-color: #666; }
+.video-pane { position: relative; width: 100%; }
+.video-stream { width: 100%; min-height: 200px; background: #000; border-radius: 6px; }
+.video-live {
+  position: absolute; top: 12px; left: 12px;
+  background: #d32f2f; color: #fff; font-size: 11px; letter-spacing: 0.1em;
+  padding: 4px 10px; border-radius: 999px;
+}
+.video-error { font-size: 13px; color: #d65b5b; padding: 24px 0; }
