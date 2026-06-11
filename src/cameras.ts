@@ -115,3 +115,96 @@ export function distributeCameras(n: number, cols: number, rows: number): number
   // Unreachable for any valid n, cols, rows combination.
   return new Array(cells).fill(0);
 }
+
+import {
+  getCameras,
+  getLiveImage,
+  listFeeds,
+  initMediaSession,
+  type Camera,
+} from 'een-api-toolkit';
+
+export interface CameraCard {
+  id: number;          // cell index 0..99
+  deviceId: string;
+  title: string;       // camera name
+  tags: string[];      // [status]
+  pending: boolean;    // preview not yet resolved
+}
+
+const PREVIEW_CONCURRENCY = 6;
+
+export function cameraStatusText(camera: Camera): string {
+  const s = camera.status as unknown;
+  if (typeof s === 'string') return s.toUpperCase();
+  if (s && typeof s === 'object' && 'connectionStatus' in s) {
+    return String((s as { connectionStatus: unknown }).connectionStatus).toUpperCase();
+  }
+  return 'UNKNOWN';
+}
+
+export async function fetchAllCameras(): Promise<{ cameras: Camera[] | null; error: string | null }> {
+  const all: Camera[] = [];
+  let pageToken: string | undefined;
+  do {
+    const { data, error } = await getCameras(pageToken ? { pageToken } : undefined);
+    if (error) return { cameras: null, error: error.message };
+    all.push(...data.results);
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return { cameras: all, error: null };
+}
+
+/**
+ * Build 100 cards via the distribution and stream preview images for each
+ * DISTINCT camera (concurrency-limited). onPreview(deviceId, dataUrl|null)
+ * fires as each preview resolves; the caller re-bakes that camera's cells.
+ * Resolves once the camera list is known; previews keep arriving after.
+ */
+export async function loadCameraCards(
+  onPreview: (deviceId: string, dataUrl: string | null) => void,
+): Promise<{ cards: CameraCard[] | null; error: string | null }> {
+  const { cameras, error } = await fetchAllCameras();
+  if (error) return { cards: null, error };
+  if (!cameras || cameras.length === 0) {
+    return { cards: null, error: 'No cameras available for this account' };
+  }
+
+  const assign = distributeCameras(cameras.length, COLS, ROWS);
+  const used = [...new Set(assign)];
+  const cards: CameraCard[] = assign.map((cameraIdx, cell) => ({
+    id: cell,
+    deviceId: cameras[cameraIdx].id,
+    title: cameras[cameraIdx].name,
+    tags: [cameraStatusText(cameras[cameraIdx])],
+    pending: true,
+  }));
+
+  // Fire-and-forget preview pool over the distinct cameras actually used.
+  const queue = used.map((i) => cameras[i].id);
+  const worker = async () => {
+    for (let d = queue.shift(); d !== undefined; d = queue.shift()) {
+      const { data } = await getLiveImage({ deviceId: d });
+      onPreview(d, data ? data.imageData : null);
+    }
+  };
+  void Promise.all(Array.from({ length: Math.min(PREVIEW_CONCURRENCY, queue.length) }, worker));
+
+  return { cards, error: null };
+}
+
+/** Initialize the media session once after login (needed for multipartUrl). */
+export async function initMedia(): Promise<void> {
+  await initMediaSession();
+}
+
+export async function getPreviewFeedUrl(
+  deviceId: string,
+): Promise<{ url: string | null; error: string | null }> {
+  const { data, error } = await listFeeds({ deviceId, type: 'preview', include: ['multipartUrl'] });
+  if (error) return { url: null, error: error.message };
+  const feed = data.results.find((f: { multipartUrl?: string | null }) => f.multipartUrl);
+  return feed?.multipartUrl
+    ? { url: feed.multipartUrl, error: null }
+    : { url: null, error: 'No preview feed available for this camera' };
+}

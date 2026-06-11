@@ -1,5 +1,26 @@
-import { describe, it, expect } from 'vitest';
+import { vi, beforeEach, describe, it, expect } from 'vitest';
+
+vi.mock('een-api-toolkit', () => ({
+  getCameras: vi.fn(),
+  getLiveImage: vi.fn(),
+  listFeeds: vi.fn(),
+  initMediaSession: vi.fn(),
+}));
+
+import { getCameras, getLiveImage, listFeeds } from 'een-api-toolkit';
+import {
+  fetchAllCameras, loadCameraCards, getPreviewFeedUrl, cameraStatusText,
+} from '../src/cameras';
 import { distributeCameras, COLS, ROWS } from '../src/cameras';
+
+const cam = (id: string, name: string, status: unknown = 'online') =>
+  ({ id, name, status }) as never;
+
+beforeEach(() => {
+  vi.mocked(getCameras).mockReset();
+  vi.mocked(getLiveImage).mockReset();
+  vi.mocked(listFeeds).mockReset();
+});
 
 const CELLS = COLS * ROWS;
 
@@ -57,5 +78,84 @@ describe('distributeCameras', () => {
         .filter((s) => s.startsWith('V'));
       expect(issues).toEqual([]);
     }
+  });
+});
+
+describe('cameraStatusText', () => {
+  it('handles string and object status', () => {
+    expect(cameraStatusText(cam('1', 'a', 'online'))).toBe('ONLINE');
+    expect(cameraStatusText(cam('1', 'a', { connectionStatus: 'offline' }))).toBe('OFFLINE');
+    expect(cameraStatusText({ id: '1', name: 'a' } as never)).toBe('UNKNOWN');
+  });
+});
+
+describe('fetchAllCameras', () => {
+  it('pages through all results', async () => {
+    vi.mocked(getCameras)
+      .mockResolvedValueOnce({ data: { results: [cam('a', 'A')], nextPageToken: 't' }, error: null } as never)
+      .mockResolvedValueOnce({ data: { results: [cam('b', 'B')] }, error: null } as never);
+    const { cameras, error } = await fetchAllCameras();
+    expect(error).toBeNull();
+    expect(cameras!.map((c) => c.id)).toEqual(['a', 'b']);
+    expect(vi.mocked(getCameras).mock.calls[1][0]).toMatchObject({ pageToken: 't' });
+  });
+
+  it('propagates errors', async () => {
+    vi.mocked(getCameras).mockResolvedValueOnce({ data: null, error: { code: 'API_ERROR', message: 'boom' } } as never);
+    const { cameras, error } = await fetchAllCameras();
+    expect(cameras).toBeNull();
+    expect(error).toContain('boom');
+  });
+});
+
+describe('loadCameraCards', () => {
+  it('errors on zero cameras', async () => {
+    vi.mocked(getCameras).mockResolvedValueOnce({ data: { results: [] }, error: null } as never);
+    const { cards, error } = await loadCameraCards(() => {});
+    expect(cards).toBeNull();
+    expect(error).toBe('No cameras available for this account');
+  });
+
+  it('builds 100 cards from the distribution and streams previews per distinct camera', async () => {
+    vi.mocked(getCameras).mockResolvedValueOnce({
+      data: { results: [cam('a', 'Front'), cam('b', 'Back'), cam('c', 'Yard')] }, error: null,
+    } as never);
+    vi.mocked(getLiveImage).mockResolvedValue({ data: { imageData: 'data:image/jpeg;base64,x' }, error: null } as never);
+
+    const seen: Array<[string, string | null]> = [];
+    const { cards, error } = await loadCameraCards((deviceId, dataUrl) => seen.push([deviceId, dataUrl]));
+    expect(error).toBeNull();
+    expect(cards).toHaveLength(100);
+    expect(new Set(cards!.map((c) => c.deviceId))).toEqual(new Set(['a', 'b', 'c']));
+    expect(cards![0]).toMatchObject({ id: 0, pending: true });
+    expect(['Front', 'Back', 'Yard']).toContain(cards![0].title);
+
+    await vi.waitFor(() => expect(seen).toHaveLength(3)); // one preview per DISTINCT camera
+    expect(vi.mocked(getLiveImage)).toHaveBeenCalledTimes(3);
+    expect(seen.every(([, url]) => url === 'data:image/jpeg;base64,x')).toBe(true);
+  });
+
+  it('reports failed previews as null', async () => {
+    vi.mocked(getCameras).mockResolvedValueOnce({ data: { results: [cam('a', 'Solo')] }, error: null } as never);
+    vi.mocked(getLiveImage).mockResolvedValue({ data: null, error: { code: 'API_ERROR', message: 'no img' } } as never);
+    const seen: Array<[string, string | null]> = [];
+    await loadCameraCards((d, u) => seen.push([d, u]));
+    await vi.waitFor(() => expect(seen).toEqual([['a', null]]));
+  });
+});
+
+describe('getPreviewFeedUrl', () => {
+  it('returns the first multipartUrl', async () => {
+    vi.mocked(listFeeds).mockResolvedValueOnce({
+      data: { results: [{ multipartUrl: null }, { multipartUrl: 'https://feed' }] }, error: null,
+    } as never);
+    expect(await getPreviewFeedUrl('a')).toEqual({ url: 'https://feed', error: null });
+  });
+
+  it('reports missing feeds', async () => {
+    vi.mocked(listFeeds).mockResolvedValueOnce({ data: { results: [] }, error: null } as never);
+    const r = await getPreviewFeedUrl('a');
+    expect(r.url).toBeNull();
+    expect(r.error).toBeTruthy();
   });
 });
