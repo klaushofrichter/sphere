@@ -32,3 +32,29 @@ body.hover-card { cursor: pointer; }
 }
 .overlay-meta { font-size: 13px; letter-spacing: 0.1em; margin-bottom: 40px; opacity: 0.9; }
 .overlay-img { width: 100%; border-radius: 6px; }
+
+.gallery-canvas { position: fixed; inset: 0; }
+.gallery-canvas canvas { position: fixed; inset: 0; display: block; }
+.login {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  background: #000; cursor: default; text-align: center;
+}
+.login-title { font-family: Helvetica, Arial, sans-serif; font-size: 48px; letter-spacing: 0.04em; }
+.login-sub { font-size: 13px; color: #888; letter-spacing: 0.15em; }
+.login-error { font-size: 13px; color: #d65b5b; max-width: 480px; }
+.login-button {
+  background: #fff; color: #000; border: 0; border-radius: 999px;
+  padding: 14px 28px; font: inherit; font-size: 14px; cursor: pointer;
+}
+.user-chip {
+  position: fixed; top: 24px; left: 24px; z-index: 5;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; letter-spacing: 0.1em; color: #888;
+}
+.user-chip-button {
+  background: transparent; color: #888; border: 1px solid #333;
+  border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 11px;
+  cursor: pointer;
+}
+.user-chip-button:hover { color: #fff; border-color: #666; }
