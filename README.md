@@ -7,7 +7,8 @@ a detail page in; closing it returns you exactly where you were.
 
 Inspired by the work gallery at [phantom.land](https://www.phantom.land/).
 
-**Live demo:** https://klaushofrichter.github.io/sphere/
+**Live demo:** https://klaushofrichter.github.io/sphere/ ·
+**Latest release:** https://github.com/klaushofrichter/sphere/releases/latest
 
 ## How it works
 
