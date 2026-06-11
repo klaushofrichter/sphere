@@ -124,7 +124,10 @@ test.describe('sphere gallery', () => {
     await expect(page.locator('#overlay-title')).not.toBeEmpty();
     await expect(page.locator('#overlay-client')).not.toBeEmpty();
     await expect(page.locator('#overlay-meta')).not.toBeEmpty();
-    await expect(page.locator('#overlay-img')).toHaveAttribute('src', /\/assets\/img-\d+\.jpg/);
+    // Stream or a clean error: the feed URL comes from the real account.
+    const stream = page.locator('#video-stream[src]');
+    const paneError = page.getByTestId('video-error');
+    await expect(stream.or(paneError)).toBeVisible({ timeout: 20_000 });
   });
 
   test('a drag does NOT open the overlay', async ({ page }) => {

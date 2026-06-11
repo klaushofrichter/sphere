@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
-    "fetch-images": "node scripts/fetch-images.mjs",
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test --config playwright.live.config.js",
     "test:e2e:build": "playwright test --config playwright.build.config.js"
