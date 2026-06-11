@@ -7,3 +7,5 @@ coverage/
 *.log
 phantom.png
 screenshot.png
+test-results/
+playwright-report/
