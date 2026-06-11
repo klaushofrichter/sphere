@@ -45,7 +45,7 @@ export async function startGallery(container) {
         if (card.deviceId !== deviceId) continue;
         card.pending = false;
         const tex = bakeCardTexture(card, img);
-        mesh.material.map.dispose();
+        mesh.material.map?.dispose();
         mesh.material.map = tex;
         mesh.material.needsUpdate = true;
       }

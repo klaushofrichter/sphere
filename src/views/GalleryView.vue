@@ -12,7 +12,10 @@ onMounted(async () => {
 });
 onUnmounted(() => { destroyGallery(); });
 
-async function onSignOut() { await logout(); }
+async function onSignOut() {
+  const err = await logout();
+  if (err) errorMsg.value = `Sign-out issue: ${err}`;
+}
 </script>
 
 <template>
