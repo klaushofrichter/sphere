@@ -10,9 +10,17 @@ permissions:
   pages: write
   id-token: write
 
+# cancel-in-progress means a rapid follow-up push to production can cancel an
+# in-flight run, including a release job mid-publish (a tag could briefly exist
+# without its zip). Accepted for this PoC: the newer push supersedes and cuts
+# its own release; a dangling tag can be deleted manually if it ever happens.
 concurrency:
   group: pages
   cancel-in-progress: true
+
+# Action versions float on majors (@v6 etc.). For a workflow with
+# contents: write, SHA-pinning the actions is the stricter supply-chain
+# hardening; floating majors are accepted for this PoC.
 
 jobs:
   build:
@@ -86,8 +94,19 @@ jobs:
           path: dist
       - name: Package the deployed build
         run: |
+          # Guard against a silently empty artifact download: the deployed
+          # build must contain the entry page and all 100 gallery images.
+          test -f dist/index.html || { echo "::error::dist/index.html missing - artifact download failed?"; exit 1; }
+          IMG_COUNT=$(find dist/assets -name 'img-*.jpg' | wc -l)
+          [ "$IMG_COUNT" -eq 100 ] || { echo "::error::expected 100 images in dist, found $IMG_COUNT"; exit 1; }
+
           VERSION=$(node -p "require('./package.json').version")
           TAG="v${VERSION}-r${{ github.run_number }}"
+          # run_number is stable across re-runs of the same run; suffix the
+          # attempt on retries so the tag never collides with an earlier one.
+          if [ "${{ github.run_attempt }}" -gt 1 ]; then
+            TAG="${TAG}.${{ github.run_attempt }}"
+          fi
           echo "TAG=${TAG}" >> "$GITHUB_ENV"
           (cd dist && zip -qr "../sphere-${TAG}.zip" .)
       - name: Create GitHub release
