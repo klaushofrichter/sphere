@@ -27,7 +27,11 @@ test('live site requires EEN sign-in and serves the gallery after login', async 
   // journey and asserted once the gallery has rendered.
   const failedAssets = [];
   page.on('requestfailed', (req) => {
-    if (req.url().includes('/assets/')) failedAssets.push(req.url());
+    // Scoped to the app origin: the EEN IdP pages may load their own
+    // /assets/ URLs, and their failures are not our deployment's problem.
+    if (req.url().startsWith(LIVE_BASE) && req.url().includes('/assets/')) {
+      failedAssets.push(req.url());
+    }
   });
 
   await test.step('login view renders (an accidentally-open deployment fails here)', async () => {
@@ -45,9 +49,23 @@ test('live site requires EEN sign-in and serves the gallery after login', async 
     await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
   });
 
-  await test.step('gallery responds to drag', async () => {
+  await test.step('detail overlay opens and closes', async () => {
     await page.waitForTimeout(SETTLE_MS); // intro + lerp tail
     expect(failedAssets).toEqual([]);
+    // At the home offset a card is guaranteed under the viewport center;
+    // the hover-card body class proves the raycaster hit it.
+    await page.mouse.move(CENTER.x, CENTER.y);
+    await expect(page.locator('body')).toHaveClass(/hover-card/, { timeout: 10_000 });
+    await page.mouse.down();
+    await page.mouse.up();
+    const overlay = page.locator('#overlay');
+    await expect(overlay).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('#overlay-title')).not.toBeEmpty();
+    await page.keyboard.press('Escape');
+    await expect(overlay).toBeHidden({ timeout: 10_000 });
+  });
+
+  await test.step('gallery responds to drag', async () => {
     const before = await canvasShot(page);
     await page.mouse.move(CENTER.x, CENTER.y);
     await page.mouse.down();
