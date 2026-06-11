@@ -8,30 +8,31 @@ async function canvasShot(page) {
 }
 
 /**
- * Wait until two consecutive frames are identical — i.e. the intro animation
- * (or any momentum) has finished. Robust against intro-duration changes.
+ * Wait until gallery motion has stopped: the scroll offset's lerp has
+ * converged on its target and no drag is active. Reads the dev-only
+ * window.__sphere test hook — deterministic and CI-speed-independent,
+ * unlike diffing canvas pixels (the lerp tail keeps frames sub-pixel
+ * different for a long time on slow software WebGL).
  */
-async function settleCanvas(page) {
-  let prev = await canvasShot(page);
-  await expect
-    .poll(
-      async () => {
-        await page.waitForTimeout(250);
-        const cur = await canvasShot(page);
-        const same = cur.equals(prev);
-        prev = cur;
-        return same;
-      },
-      { timeout: 15_000, message: 'canvas never settled (intro/momentum still running?)' },
-    )
-    .toBe(true);
+async function settleGallery(page) {
+  await page.waitForFunction(
+    () => {
+      const c = window.__sphere?.controls;
+      if (!c || c.dragging) return false;
+      return (
+        Math.abs(c.target.x - c.current.x) < 1e-4 &&
+        Math.abs(c.target.y - c.current.y) < 1e-4
+      );
+    },
+    { timeout: 20_000 },
+  );
 }
 
 /** Navigate, wait for all images, and let the intro animation settle. */
 async function openGallery(page) {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  await settleCanvas(page);
+  await settleGallery(page);
 }
 
 /**
@@ -125,7 +126,7 @@ test.describe('sphere gallery', () => {
     await page.mouse.down();
     await page.mouse.move(CENTER.x - 300, CENTER.y, { steps: 10 });
     await page.mouse.up();
-    await settleCanvas(page);
+    await settleGallery(page);
 
     await expect(page.locator('#overlay')).toBeHidden();
   });

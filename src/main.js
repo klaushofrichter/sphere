@@ -85,3 +85,10 @@ gsap.to(camera, {
   onUpdate: () => camera.updateProjectionMatrix(),
 });
 gsap.from(controls.target, { x: 0.6, y: -0.3, duration: 1.8, ease: 'power3.out' });
+
+// Test hook (dev server only): lets e2e tests wait for motion to settle by
+// reading controls state instead of diffing canvas pixels. Set last, after
+// the intro tweens exist, so its presence implies the intro has started.
+if (import.meta.env.DEV) {
+  window.__sphere = { controls };
+}
