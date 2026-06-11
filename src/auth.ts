@@ -63,7 +63,11 @@ export async function completeCallback(): Promise<string | null> {
   return error ? error.message : null;
 }
 
-/** Revoke the token (proxy clears the session) and reset auth state. */
+/**
+ * Revoke the token (proxy clears the session) and reset auth state.
+ * revokeToken() resets the toolkit's Pinia store (isAuthenticated → false);
+ * the UI's return to the login view relies on that store mutation.
+ */
 export async function logout(): Promise<void> {
   await revokeToken();
 }
@@ -71,7 +75,7 @@ export async function logout(): Promise<void> {
 /** One toolkit API call to prove end-to-end access; null on any error. */
 export async function fetchUserEmail(): Promise<string | null> {
   const { data, error } = await getCurrentUser();
-  return error ? null : (data.email ?? null);
+  return error ? null : (data?.email ?? null);
 }
 
 export { useAuthStore };

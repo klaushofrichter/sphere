@@ -30,7 +30,11 @@ watch(isAuthed, async (authed) => {
 }, { immediate: true });
 
 async function onSignOut() {
-  await logout();
+  try {
+    await logout();
+  } catch (e) {
+    authError.value = e instanceof Error ? e.message : 'Sign-out failed';
+  }
 }
 </script>
 

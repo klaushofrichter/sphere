@@ -49,6 +49,7 @@ export async function startGallery(container) {
   if (gen !== startGen) {
     window.removeEventListener('resize', onResize);
     renderer.dispose();
+    renderer.forceContextLoss(); // release the GL context so cycles don't exhaust the ~16-context cap
     renderer.domElement.remove();
     return;
   }
@@ -125,6 +126,7 @@ export function destroyGallery() {
   ctx.overlay.dispose();
   ctx.gallery.dispose();
   ctx.renderer.dispose();
+  ctx.renderer.forceContextLoss(); // release the GL context so cycles don't exhaust the ~16-context cap
   ctx.renderer.domElement.remove();
   document.body.classList.remove('hover-card', 'dragging');
   if (import.meta.env.DEV) delete window.__sphere;
