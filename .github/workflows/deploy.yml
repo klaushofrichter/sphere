@@ -32,7 +32,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Public-by-design values (OAuth public client id, public proxy URL,
+      # registered redirect URI) baked into the public bundle: the Pages
+      # site requires EEN sign-in. CLIENT_SECRET stays proxy-side.
       - run: npx vite build --base=/sphere/
+        env:
+          VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          VITE_EEN_CLIENT_ID: ${{ secrets.VITE_EEN_CLIENT_ID }}
+          VITE_REDIRECT_URI: https://klaushofrichter.github.io/sphere
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
@@ -70,6 +77,29 @@ jobs:
       - run: npm run test:e2e:live
         env:
           LIVE_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+          TEST_USER: ${{ secrets.TEST_USER }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+      # Playwright's failure artifacts (error-context ARIA snapshots, report
+      # attachments) can contain the typed TEST_USER value if the journey
+      # fails on the IdP login page. Scrub both values before uploading.
+      # The scrub is text-only (ARIA snapshots, report HTML): it cannot reach
+      # pixels in screenshots or strings inside compressed traces. Capture
+      # stays DISABLED for credential-bearing steps (see playwright configs);
+      # that disable is the primary guarantee, this step is the backstop.
+      - name: Redact test credentials from report artifacts
+        if: failure()
+        env:
+          TEST_USER_VALUE: ${{ secrets.TEST_USER }}
+          TEST_PASSWORD_VALUE: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          for VAL in "$TEST_USER_VALUE" "$TEST_PASSWORD_VALUE"; do
+            [ -n "$VAL" ] || continue
+            grep -rlFe "$VAL" playwright-report test-results 2>/dev/null \
+              | while read -r f; do
+                  VAL="$VAL" perl -i -pe 's/\Q$ENV{VAL}\E/REDACTED/g' "$f"
+                done
+          done
+        shell: bash
       - name: Upload live test report
         if: failure()
         uses: actions/upload-artifact@v7

@@ -7,7 +7,8 @@ a detail page in; closing it returns you exactly where you were.
 
 Inspired by the work gallery at [phantom.land](https://www.phantom.land/).
 
-**Live demo:** https://klaushofrichter.github.io/sphere/ ·
+**Live demo:** https://klaushofrichter.github.io/sphere/ (requires an
+Eagle Eye Networks sign-in) ·
 **Latest release:** https://github.com/klaushofrichter/sphere/releases/latest
 
 ## How it works
@@ -59,8 +60,10 @@ runs against the EEN Identity Provider through
 Pinia). The proxy keeps `CLIENT_SECRET` and refresh tokens server-side.
 
 Without those two variables the app builds in **open mode** — no login, the
-gallery is public. The GitHub Pages deployment builds without them, so the
-live demo stays open.
+gallery is public (used by the local build-smoke test and available for
+demos). The GitHub Pages deployment builds **with** them, so the live site
+requires sign-in; after each deploy, the live verification performs a real
+EEN login against the deployed site before a release is cut.
 
 Auth e2e: the Playwright `setup` project performs a real EEN login with
 `TEST_USER`/`TEST_PASSWORD` (locally from `.env`, in CI from repo secrets) and
@@ -92,7 +95,7 @@ them with:
 | Variable | Used by |
 |---|---|
 | `ANTHROPIC_API_KEY` | The Claude code-review workflow (`.github/workflows/pr-review.yml`), which posts an automated review comment on every PR. |
-| `VITE_PROXY_URL`, `VITE_EEN_CLIENT_ID` | The auth build switch: present → the app requires EEN sign-in (dev + CI e2e); absent → open mode (GitHub Pages). |
+| `VITE_PROXY_URL`, `VITE_EEN_CLIENT_ID` | The auth build switch: present → the app requires EEN sign-in (dev, CI e2e, and the GitHub Pages deployment); absent → open mode (build-smoke test, local demos). |
 | `TEST_USER`, `TEST_PASSWORD` | The EEN test account used by the Playwright auth setup for real-login e2e (local + CI). |
 
 Secrets are write-only on GitHub: they can be replaced or deleted but never
@@ -106,8 +109,9 @@ read back, and re-running the script overwrites existing values.
   test, CodeQL security analysis, and an advisory Claude code review. Four
   checks are required to merge into `production`: `Unit Tests`, `E2E Tests`,
   `Analyze (javascript-typescript)`, and the `CodeQL` alert verdict.
-- Merging to `production` triggers the deploy workflow: build → publish to
-  GitHub Pages → **live e2e verification against the deployed site** → on
+- Merging to `production` triggers the deploy workflow: build (with EEN auth
+  baked in) → publish to GitHub Pages → **live e2e verification including a
+  real EEN sign-in against the deployed site** → on
   success, a GitHub release tagged `v<version>-r<run>` with the exact deployed
   build attached as a zip (see the
   [releases page](https://github.com/klaushofrichter/sphere/releases)).

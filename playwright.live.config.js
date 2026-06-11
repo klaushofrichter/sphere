@@ -14,6 +14,10 @@ export default defineConfig({
     ...devices['Desktop Chrome'],
     baseURL: base.endsWith('/') ? base : `${base}/`,
     viewport: { width: 1280, height: 720 },
-    trace: 'on-first-retry',
+    // The live journey types real credentials; a trace would record them.
+    // Local runs may keep traces (never uploaded).
+    trace: process.env.CI ? 'off' : 'on-first-retry',
+    // Keep screenshot/video at their defaults (off): enabling them would
+    // capture the IdP login page in the uploaded failure report.
   },
 });
