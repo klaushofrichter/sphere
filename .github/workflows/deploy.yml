@@ -19,14 +19,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npx vite build --base=/sphere/
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
+          path: dist
+      # Same files, kept as a regular artifact so the release job can
+      # package exactly what was deployed (no rebuild drift).
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
           path: dist
 
   deploy:
@@ -39,7 +45,7 @@ jobs:
       page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   verify:
     name: Live E2E Verification
@@ -47,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -58,10 +64,40 @@ jobs:
           LIVE_BASE_URL: ${{ needs.deploy.outputs.page_url }}
       - name: Upload live test report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: live-e2e-report
           path: |
             playwright-report/
             test-results/
           retention-days: 7
+
+  release:
+    name: Release Package
+    needs: [deploy, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+      - name: Package the deployed build
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}-r${{ github.run_number }}"
+          echo "TAG=${TAG}" >> "$GITHUB_ENV"
+          (cd dist && zip -qr "../sphere-${TAG}.zip" .)
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG" "sphere-${TAG}.zip" \
+            --target "${{ github.sha }}" \
+            --title "Sphere Gallery ${TAG}" \
+            --notes "Automated release of commit ${{ github.sha }} after a successful GitHub Pages deployment and live e2e verification.
+
+          Live site: ${{ needs.deploy.outputs.page_url }}
+          The attached zip contains the exact build that was deployed."
