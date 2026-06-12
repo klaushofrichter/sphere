@@ -162,6 +162,7 @@ export async function startGallery(container) {
       .then((dataUrl) => {
         if (dataUrl && gen === startGen) onPreview(pickId, dataUrl);
       })
+      .catch((e) => console.warn('preview refresh failed:', e))
       .finally(() => { refreshing.delete(pickId); });
   }, REFRESH_INTERVAL_MS);
 
