@@ -183,7 +183,6 @@ export async function loadCameraCards(
   if (cameras.length > COLS * ROWS) {
     console.warn(`Account has ${cameras.length} online cameras; showing the first ${COLS * ROWS}.`);
   }
-  const used = [...new Set(assign)];
   const cards: CameraCard[] = assign.map((cameraIdx, cell) => ({
     id: cell,
     deviceId: cameras[cameraIdx].id,
@@ -193,7 +192,7 @@ export async function loadCameraCards(
   }));
 
   // Fire-and-forget preview pool over the distinct cameras actually used.
-  const queue = used.map((i) => cameras[i].id);
+  const queue = [...new Set(assign)].map((i) => cameras[i].id);
   const worker = async () => {
     for (let d = queue.shift(); d !== undefined; d = queue.shift()) {
       // Guard the whole body: a thrown refresh (vs. the {data:null} path)
@@ -214,7 +213,7 @@ export async function loadCameraCards(
 /** Fetch a camera's current preview image; data URL or null on any error. */
 export async function refreshPreview(deviceId: string): Promise<string | null> {
   const { data } = await getLiveImage({ deviceId });
-  return data ? data.imageData : null;
+  return data?.imageData ?? null;
 }
 
 /** Initialize the media session once after login (needed for multipartUrl). */

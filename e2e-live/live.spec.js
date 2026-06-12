@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { loginToEen } from '../e2e/helpers/eenLogin';
+import { CENTER, canvasShot } from '../e2e/helpers/shared.js';
 
 // Post-deployment verification: a single authenticated journey against the
 // live GitHub Pages site. The production build has no test hook, so settling
 // uses fixed waits. IdP form interaction lives in e2e/helpers/eenLogin.ts
 // (shared with the dev/CI auth setup).
 
-const CENTER = { x: 640, y: 360 };
 const SETTLE_MS = 5_000;
 // Post-login URL expectation derives from the configured target so the spec
 // follows LIVE_BASE_URL instead of hardcoding the production host. Normalized
@@ -14,10 +14,6 @@ const SETTLE_MS = 5_000;
 // cannot match a sibling like ".../sphere-foo").
 const LIVE_BASE = (process.env.LIVE_BASE_URL || 'https://klaushofrichter.github.io/sphere/')
   .replace(/\/$/, '') + '/';
-
-async function canvasShot(page) {
-  return page.locator('canvas').screenshot();
-}
 
 test('live site requires EEN sign-in and serves the gallery after login', async ({ page }) => {
   test.setTimeout(240_000);

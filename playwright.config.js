@@ -1,5 +1,6 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
 import { loadEnv } from 'vite';
+import { reporter, baseUse } from './playwright.shared.js';
 
 // Playwright's node process doesn't read .env (only Vite does). Load the
 // test credentials from it for local runs; real env vars (CI) win.
@@ -24,12 +25,10 @@ export default defineConfig({
   testDir: 'e2e',
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
+  reporter,
   use: {
-    // Device spread first so the explicit settings below always win.
-    ...devices['Desktop Chrome'],
+    ...baseUse,
     baseURL: 'http://127.0.0.1:3333',
-    viewport: { width: 1280, height: 720 },
     trace: 'on-first-retry',
   },
   webServer: {

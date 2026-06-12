@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { loadCameraCards, refreshPreview } from './cameras';
-import { bakeCardTexture } from './cardTexture.js';
 import { Gallery } from './gallery.js';
 import { Controls } from './controls.js';
 import { Overlay } from './overlay.js';
@@ -41,18 +40,7 @@ export async function startGallery(container) {
   const onPreview = (deviceId, dataUrl) => {
     const apply = (img) => {
       if (gen !== startGen) return; // gallery torn down before this preview arrived
-      // Bake ONCE per camera and share the texture across all its cells
-      // (their content is identical) — matters at 10 re-bakes/sec.
-      let tex = null;
-      for (const mesh of gallery.meshes) {
-        const card = mesh.userData.card;
-        if (card.deviceId !== deviceId) continue;
-        card.pending = false;
-        tex ??= bakeCardTexture(card, img);
-        if (mesh.material.map !== tex) mesh.material.map?.dispose();
-        mesh.material.map = tex;
-        mesh.material.needsUpdate = true;
-      }
+      gallery.updatePreview(deviceId, img);
     };
     if (!dataUrl) { apply(null); return; }
     const img = new Image();
@@ -72,7 +60,7 @@ export async function startGallery(container) {
   if (gen !== startGen) { cleanupPartial(); return; }
   if (error) { cleanupPartial(); return { error }; }
 
-  const gallery = new Gallery(scene, cards, cards.map(() => null));
+  const gallery = new Gallery(scene, cards);
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
   let pointerOnScreen = false;
@@ -88,7 +76,7 @@ export async function startGallery(container) {
   function pick() {
     if (!pointerOnScreen) return null;
     raycaster.setFromCamera(pointerNdc, camera);
-    const hits = raycaster.intersectObjects(gallery.meshes.filter((m) => m.visible));
+    const hits = raycaster.intersectObjects(gallery.visibleMeshes);
     return hits.length ? hits[0].object : null;
   }
 
@@ -114,7 +102,7 @@ export async function startGallery(container) {
     gallery.update(controls.current.x, controls.current.y);
     const hoverMesh = (controls.dragging || overlay.isOpen) ? null : pick();
     gallery.setHover(hoverMesh);
-    document.body.classList.toggle('hover-card', !!hoverMesh && !controls.dragging);
+    controls.setHoverCard(!!hoverMesh && !controls.dragging);
     renderer.render(scene, camera);
   };
   gsap.ticker.add(tick);
@@ -148,12 +136,10 @@ export async function startGallery(container) {
     if (document.hidden || overlay.isOpen || refreshing.size >= REFRESH_MAX_IN_FLIGHT) return;
     let pickId = null;
     let oldest = Infinity;
-    for (const mesh of gallery.meshes) {
-      if (!mesh.visible) continue;
-      const card = mesh.userData.card;
-      if (card.pending || refreshing.has(card.deviceId)) continue;
-      const t = lastRefresh.get(card.deviceId) ?? 0;
-      if (t < oldest) { oldest = t; pickId = card.deviceId; }
+    for (const [deviceId, pending] of gallery.visibleDeviceIds()) {
+      if (pending || refreshing.has(deviceId)) continue;
+      const t = lastRefresh.get(deviceId) ?? 0;
+      if (t < oldest) { oldest = t; pickId = deviceId; }
     }
     if (!pickId) return;
     lastRefresh.set(pickId, performance.now());
@@ -191,7 +177,7 @@ export function destroyGallery() {
   ctx.renderer.dispose();
   ctx.renderer.forceContextLoss(); // release the GL context so cycles don't exhaust the ~16-context cap
   ctx.renderer.domElement.remove();
-  document.body.classList.remove('hover-card', 'dragging');
+  // body classes ('dragging', 'hover-card') are cleared by controls.dispose()
   if (import.meta.env.DEV) delete window.__sphere;
   ctx = null;
 }

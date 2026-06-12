@@ -8,7 +8,7 @@ const GAP = 0.06;          // fraction of cell width left as black gap
 const BASE_TINT = 0.73;    // resting brightness (multiplied onto the texture)
 
 export class Gallery {
-  constructor(scene, cards, images) {
+  constructor(scene, cards) {
     this.group = new THREE.Group();
     scene.add(this.group);
 
@@ -18,7 +18,7 @@ export class Gallery {
     this.geo = geo;
 
     this.meshes = cards.map((card, i) => {
-      const tex = bakeCardTexture(card, images[i]);
+      const tex = bakeCardTexture(card, null); // placeholder; previews stream in via updatePreview
       const mat = new THREE.MeshBasicMaterial({ map: tex });
       mat.color.setScalar(BASE_TINT);
       const mesh = new THREE.Mesh(geo, mat);
@@ -30,9 +30,13 @@ export class Gallery {
     });
 
     this.hovered = null;
+    // Maintained by update(); read by raycasting and the refresh scheduler so
+    // hot paths never re-filter (and never re-allocate) the mesh list.
+    this.visibleMeshes = [];
   }
 
   update(offsetX, offsetY) {
+    this.visibleMeshes.length = 0;
     for (const mesh of this.meshes) {
       const { visible, position } = gridToSphere(
         mesh.userData.col, mesh.userData.row, offsetX, offsetY, COLS, ROWS,
@@ -41,8 +45,37 @@ export class Gallery {
       if (visible) {
         mesh.position.set(position[0], position[1], position[2]);
         mesh.lookAt(0, 0, 0);
+        this.visibleMeshes.push(mesh);
       }
     }
+  }
+
+  /**
+   * Re-bake a camera's preview onto every cell showing it. Bakes ONCE per
+   * camera and shares the texture across its cells (their content is
+   * identical) — matters at 10 re-bakes/sec.
+   */
+  updatePreview(deviceId, img) {
+    let tex = null;
+    for (const mesh of this.meshes) {
+      const card = mesh.userData.card;
+      if (card.deviceId !== deviceId) continue;
+      card.pending = false;
+      tex ??= bakeCardTexture(card, img);
+      if (mesh.material.map !== tex) mesh.material.map?.dispose();
+      mesh.material.map = tex;
+      mesh.material.needsUpdate = true;
+    }
+  }
+
+  /** Distinct on-screen cameras → pending flag (for the refresh scheduler). */
+  visibleDeviceIds() {
+    const seen = new Map();
+    for (const mesh of this.visibleMeshes) {
+      const card = mesh.userData.card;
+      if (!seen.has(card.deviceId)) seen.set(card.deviceId, card.pending);
+    }
+    return seen;
   }
 
   dispose() {

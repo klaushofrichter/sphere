@@ -1,4 +1,5 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
+import { reporter, baseUse } from './playwright.shared.js';
 
 // Smoke test against the PRODUCTION build under the GitHub Pages base path.
 // Separate config so regular dev e2e runs (playwright.config.js) don't pay
@@ -7,11 +8,10 @@ export default defineConfig({
   testDir: 'e2e-build',
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
+  reporter,
   use: {
-    ...devices['Desktop Chrome'],
+    ...baseUse,
     baseURL: 'http://localhost:4173',
-    viewport: { width: 1280, height: 720 },
     trace: 'on-first-retry',
   },
   webServer: {

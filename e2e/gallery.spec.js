@@ -1,11 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-const CENTER = { x: 640, y: 360 };
-
-/** Grab the rendered canvas pixels as a screenshot buffer. */
-async function canvasShot(page) {
-  return page.locator('canvas').screenshot();
-}
+import { CENTER, canvasShot } from './helpers/shared.js';
 
 /**
  * Wait until gallery motion has stopped: the scroll offset's lerp has

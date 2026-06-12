@@ -13,8 +13,9 @@ export class Controls {
     this.current = { x: 0, y: 0 };
     this.dragging = false;
     this.start = null;
-    this.last = null;
+    this.last = { x: 0, y: 0, t: 0 }; // mutated in place (pointermove fires often)
     this.velocity = { x: 0, y: 0 };
+    this._hoverCard = false;
 
     this.el = el;
     this._onDown = (e) => this.onDown(e);
@@ -32,7 +33,9 @@ export class Controls {
     if (!this.enabled || e.button !== 0) return;
     this.dragging = true;
     this.start = { x: e.clientX, y: e.clientY };
-    this.last = { x: e.clientX, y: e.clientY, t: performance.now() };
+    this.last.x = e.clientX;
+    this.last.y = e.clientY;
+    this.last.t = performance.now();
     this.velocity = { x: 0, y: 0 };
     gsap.killTweensOf(this.target);
     document.body.classList.add('dragging');
@@ -48,7 +51,9 @@ export class Controls {
     this.target.y += dy * DRAG_SPEED;
     this.velocity.x = (-dx * DRAG_SPEED / dt) * 1000;
     this.velocity.y = (dy * DRAG_SPEED / dt) * 1000;
-    this.last = { x: e.clientX, y: e.clientY, t: now };
+    this.last.x = e.clientX;
+    this.last.y = e.clientY;
+    this.last.t = now;
   }
 
   onUp(e) {
@@ -83,12 +88,23 @@ export class Controls {
     this.current.y += (this.target.y - this.current.y) * EASE;
   }
 
+  /**
+   * Cursor state lives here alongside the 'dragging' class: Controls owns
+   * every body class that reflects pointer interaction. No-ops when the
+   * state hasn't changed, so calling it every frame is free.
+   */
+  setHoverCard(on) {
+    if (on === this._hoverCard) return;
+    this._hoverCard = on;
+    document.body.classList.toggle('hover-card', on);
+  }
+
   dispose() {
     this.el.removeEventListener('pointerdown', this._onDown);
     window.removeEventListener('pointermove', this._onMove);
     window.removeEventListener('pointerup', this._onUp);
     window.removeEventListener('pointercancel', this._onCancel);
     gsap.killTweensOf(this.target);
-    document.body.classList.remove('dragging');
+    document.body.classList.remove('dragging', 'hover-card');
   }
 }

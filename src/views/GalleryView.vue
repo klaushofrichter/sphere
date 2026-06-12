@@ -12,9 +12,11 @@ onMounted(async () => {
 });
 onUnmounted(() => { destroyGallery(); });
 
-async function onSignOut() {
-  const err = await logout();
-  if (err) errorMsg.value = `Sign-out issue: ${err}`;
+// No error capture here: revokeToken resets local auth state even on failure,
+// so this always lands on the login view (App.vue's chip handler is the one
+// that surfaces revoke errors).
+function onSignOut() {
+  void logout();
 }
 </script>
 
