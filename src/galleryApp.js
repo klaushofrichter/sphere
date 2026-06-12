@@ -150,10 +150,13 @@ export async function startGallery(container) {
     if (!pickId) return;
     lastRefresh.set(pickId, performance.now());
     refreshInFlight++;
-    refreshPreview(pickId).then((dataUrl) => {
-      refreshInFlight--;
-      if (dataUrl && gen === startGen) onPreview(pickId, dataUrl);
-    });
+    refreshPreview(pickId)
+      .then((dataUrl) => {
+        if (dataUrl && gen === startGen) onPreview(pickId, dataUrl);
+      })
+      // .finally so a rejection can't leak the counter and wedge all
+      // refreshing once REFRESH_MAX_IN_FLIGHT leaked slots accumulate.
+      .finally(() => { refreshInFlight--; });
   }, REFRESH_INTERVAL_MS);
 
   // Test hook (dev server only): lets e2e tests wait for motion to settle by

@@ -28,7 +28,9 @@ let emailRequest = 0;
 watch(isAuthed, async (authed) => {
   const req = ++emailRequest;
   if (authEnabled && authed) {
-    void initMedia(); // needed before multipartUrl streaming; failures surface in the video pane
+    // needed before multipartUrl streaming; an init failure otherwise only
+    // surfaces later when a feed fetch fails, so log it here too.
+    initMedia().catch((e) => console.warn('media session init failed:', e));
     const email = await fetchUserEmail();
     if (req === emailRequest) userEmail.value = email;
   } else {

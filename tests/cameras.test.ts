@@ -40,7 +40,7 @@ function neighborsDiffer(assign: number[], cols: number, rows: number) {
 
 describe('distributeCameras', () => {
   it('fills all cells and is deterministic', () => {
-    for (const n of [1, 2, 3, 7, 50, 100, 250]) {
+    for (const n of [1, 2, 3, 7, 9, 50, 100, 250]) {
       const a = distributeCameras(n, COLS, ROWS);
       expect(a).toHaveLength(CELLS);
       expect(a).toEqual(distributeCameras(n, COLS, ROWS));
@@ -52,7 +52,7 @@ describe('distributeCameras', () => {
   });
 
   it('uses every camera at least once when n <= cells', () => {
-    for (const n of [1, 2, 3, 7, 50, 100]) {
+    for (const n of [1, 2, 3, 7, 9, 50, 100]) {
       const used = new Set(distributeCameras(n, COLS, ROWS));
       expect(used.size).toBe(n);
     }
@@ -65,7 +65,7 @@ describe('distributeCameras', () => {
   });
 
   it('horizontal neighbors always differ for n > 1', () => {
-    for (const n of [2, 3, 7, 50]) {
+    for (const n of [2, 3, 7, 9, 50]) {
       const issues = neighborsDiffer(distributeCameras(n, COLS, ROWS), COLS, ROWS)
         .filter((s) => s.startsWith('H'));
       expect(issues).toEqual([]);
@@ -73,10 +73,23 @@ describe('distributeCameras', () => {
   });
 
   it('vertical neighbors differ for n > 2', () => {
-    for (const n of [3, 7, 50]) {
+    for (const n of [3, 7, 9, 50]) {
       const issues = neighborsDiffer(distributeCameras(n, COLS, ROWS), COLS, ROWS)
         .filter((s) => s.startsWith('V'));
       expect(issues).toEqual([]);
+    }
+  });
+
+  // Sweep every camera count to lock down the fragile Path B fallback
+  // (n ∈ {3, 9}, where n divides cols-1) alongside the Path A majority.
+  it('covers all cameras with no equal neighbors for every n in 2..100', () => {
+    for (let n = 2; n <= CELLS; n++) {
+      const a = distributeCameras(n, COLS, ROWS);
+      expect(new Set(a).size, `coverage for n=${n}`).toBe(n);
+      const issues = neighborsDiffer(a, COLS, ROWS);
+      const expected = n === 2 ? issues.filter((s) => s.startsWith('V')) : [];
+      // n=2 cannot avoid vertical collisions on a 10-row torus; only H is guaranteed.
+      expect(issues, `neighbors for n=${n}`).toEqual(expected);
     }
   });
 });
