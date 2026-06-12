@@ -158,22 +158,24 @@ export async function fetchAllCameras(): Promise<{ cameras: Camera[] | null; err
 
 /**
  * Build 100 cards via the distribution and stream preview images for each
- * DISTINCT camera (concurrency-limited). onPreview(deviceId, dataUrl|null)
- * fires as each preview resolves; the caller re-bakes that camera's cells.
- * Resolves once the camera list is known; previews keep arriving after.
+ * DISTINCT camera (concurrency-limited). Offline cameras are excluded from
+ * the gallery entirely. onPreview(deviceId, dataUrl|null) fires as each
+ * preview resolves; the caller re-bakes that camera's cells. Resolves once
+ * the camera list is known; previews keep arriving after.
  */
 export async function loadCameraCards(
   onPreview: (deviceId: string, dataUrl: string | null) => void,
 ): Promise<{ cards: CameraCard[] | null; error: string | null }> {
-  const { cameras, error } = await fetchAllCameras();
+  const { cameras: all, error } = await fetchAllCameras();
   if (error) return { cards: null, error };
-  if (!cameras || cameras.length === 0) {
-    return { cards: null, error: 'No cameras available for this account' };
+  const cameras = (all ?? []).filter((c) => cameraStatusText(c) === 'ONLINE');
+  if (cameras.length === 0) {
+    return { cards: null, error: 'No online cameras available for this account' };
   }
 
   const assign = distributeCameras(cameras.length, COLS, ROWS);
   if (cameras.length > COLS * ROWS) {
-    console.warn(`Account has ${cameras.length} cameras; showing the first ${COLS * ROWS}.`);
+    console.warn(`Account has ${cameras.length} online cameras; showing the first ${COLS * ROWS}.`);
   }
   const used = [...new Set(assign)];
   const cards: CameraCard[] = assign.map((cameraIdx, cell) => ({
@@ -188,9 +190,9 @@ export async function loadCameraCards(
   const queue = used.map((i) => cameras[i].id);
   const worker = async () => {
     for (let d = queue.shift(); d !== undefined; d = queue.shift()) {
-      const { data } = await getLiveImage({ deviceId: d });
+      const dataUrl = await refreshPreview(d);
       try {
-        onPreview(d, data ? data.imageData : null);
+        onPreview(d, dataUrl);
       } catch (e) {
         console.warn('onPreview callback failed:', e);
       }
@@ -199,6 +201,12 @@ export async function loadCameraCards(
   void Promise.all(Array.from({ length: Math.min(PREVIEW_CONCURRENCY, queue.length) }, worker));
 
   return { cards, error: null };
+}
+
+/** Fetch a camera's current preview image; data URL or null on any error. */
+export async function refreshPreview(deviceId: string): Promise<string | null> {
+  const { data } = await getLiveImage({ deviceId });
+  return data ? data.imageData : null;
 }
 
 /** Initialize the media session once after login (needed for multipartUrl). */

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
-import { loadCameraCards } from './cameras';
+import { loadCameraCards, refreshPreview } from './cameras';
 import { bakeCardTexture } from './cardTexture.js';
 import { Gallery } from './gallery.js';
 import { Controls } from './controls.js';
@@ -126,6 +126,36 @@ export async function startGallery(container) {
   });
   gsap.from(controls.target, { x: 0.6, y: -0.3, duration: 1.8, ease: 'power3.out' });
 
+  // Rolling preview refresh: every tick (100ms => at most 10 image loads per
+  // second) re-fetch ONE on-screen camera's preview — the least recently
+  // refreshed — and re-bake its cells. All shown cameras are online (offline
+  // ones are filtered out at load). Paused while the overlay streams video;
+  // cameras whose first preview hasn't arrived are skipped; a failed refresh
+  // keeps the existing image (onPreview only fires for non-null data).
+  const REFRESH_INTERVAL_MS = 100;
+  const REFRESH_MAX_IN_FLIGHT = 10;
+  const lastRefresh = new Map();
+  let refreshInFlight = 0;
+  const refreshTimer = setInterval(() => {
+    if (overlay.isOpen || refreshInFlight >= REFRESH_MAX_IN_FLIGHT) return;
+    let pickId = null;
+    let oldest = Infinity;
+    for (const mesh of gallery.meshes) {
+      if (!mesh.visible) continue;
+      const card = mesh.userData.card;
+      if (card.pending) continue;
+      const t = lastRefresh.get(card.deviceId) ?? 0;
+      if (t < oldest) { oldest = t; pickId = card.deviceId; }
+    }
+    if (!pickId) return;
+    lastRefresh.set(pickId, performance.now());
+    refreshInFlight++;
+    refreshPreview(pickId).then((dataUrl) => {
+      refreshInFlight--;
+      if (dataUrl && gen === startGen) onPreview(pickId, dataUrl);
+    });
+  }, REFRESH_INTERVAL_MS);
+
   // Test hook (dev server only): lets e2e tests wait for motion to settle by
   // reading controls state instead of diffing canvas pixels. Set last, after
   // the intro tweens exist, so its presence implies the intro has started.
@@ -133,12 +163,13 @@ export async function startGallery(container) {
     window.__sphere = { controls };
   }
 
-  ctx = { renderer, gallery, overlay, videoPane, controls, tick, onResize, onPointerMove, camera };
+  ctx = { renderer, gallery, overlay, videoPane, controls, tick, onResize, onPointerMove, camera, refreshTimer };
 }
 
 export function destroyGallery() {
   startGen++; // cancels any in-flight startGallery
   if (!ctx) return;
+  clearInterval(ctx.refreshTimer);
   gsap.ticker.remove(ctx.tick);
   gsap.killTweensOf(ctx.camera);
   window.removeEventListener('resize', ctx.onResize);

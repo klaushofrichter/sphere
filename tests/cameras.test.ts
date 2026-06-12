@@ -9,7 +9,7 @@ vi.mock('een-api-toolkit', () => ({
 
 import { getCameras, getLiveImage, listFeeds } from 'een-api-toolkit';
 import {
-  fetchAllCameras, loadCameraCards, getPreviewFeedUrl, cameraStatusText,
+  fetchAllCameras, loadCameraCards, getPreviewFeedUrl, cameraStatusText, refreshPreview,
 } from '../src/cameras';
 import { distributeCameras, COLS, ROWS } from '../src/cameras';
 
@@ -113,7 +113,36 @@ describe('loadCameraCards', () => {
     vi.mocked(getCameras).mockResolvedValueOnce({ data: { results: [] }, error: null } as never);
     const { cards, error } = await loadCameraCards(() => {});
     expect(cards).toBeNull();
-    expect(error).toBe('No cameras available for this account');
+    expect(error).toBe('No online cameras available for this account');
+  });
+
+  it('excludes offline cameras from the gallery', async () => {
+    vi.mocked(getCameras).mockResolvedValueOnce({
+      data: {
+        results: [
+          cam('a', 'Front', 'online'),
+          cam('b', 'Back', 'offline'),
+          cam('c', 'Yard', { connectionStatus: 'online' }),
+          cam('d', 'Gate', { connectionStatus: 'deviceOffline' }),
+        ],
+      },
+      error: null,
+    } as never);
+    vi.mocked(getLiveImage).mockResolvedValue({ data: { imageData: 'data:image/jpeg;base64,x' }, error: null } as never);
+
+    const { cards, error } = await loadCameraCards(() => {});
+    expect(error).toBeNull();
+    expect(new Set(cards!.map((c) => c.deviceId))).toEqual(new Set(['a', 'c']));
+  });
+
+  it('errors when every camera is offline', async () => {
+    vi.mocked(getCameras).mockResolvedValueOnce({
+      data: { results: [cam('a', 'Front', 'offline'), cam('b', 'Back', 'error')] },
+      error: null,
+    } as never);
+    const { cards, error } = await loadCameraCards(() => {});
+    expect(cards).toBeNull();
+    expect(error).toBe('No online cameras available for this account');
   });
 
   it('builds 100 cards from the distribution and streams previews per distinct camera', async () => {
@@ -141,6 +170,16 @@ describe('loadCameraCards', () => {
     const seen: Array<[string, string | null]> = [];
     await loadCameraCards((d, u) => seen.push([d, u]));
     await vi.waitFor(() => expect(seen).toEqual([['a', null]]));
+  });
+});
+
+describe('refreshPreview', () => {
+  it('returns the data url on success and null on failure', async () => {
+    vi.mocked(getLiveImage)
+      .mockResolvedValueOnce({ data: { imageData: 'data:image/jpeg;base64,y' }, error: null } as never)
+      .mockResolvedValueOnce({ data: null, error: { code: 'API_ERROR', message: 'nope' } } as never);
+    expect(await refreshPreview('a')).toBe('data:image/jpeg;base64,y');
+    expect(await refreshPreview('a')).toBeNull();
   });
 });
 
