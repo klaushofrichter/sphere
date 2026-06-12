@@ -8,7 +8,7 @@ export class Overlay {
     this.clientEl = document.getElementById('overlay-client');
     this.titleEl = document.getElementById('overlay-title');
     this.metaEl = document.getElementById('overlay-meta');
-    this.imgEl = document.getElementById('overlay-img');
+    this.paneEl = document.querySelector('.video-pane');
     this.isOpen = false;
     this.onCloseStart = null;
 
@@ -25,11 +25,9 @@ export class Overlay {
     if (this.isOpen) return;
     this.isOpen = true;
     this.el.style.background = PALETTE[card.id % PALETTE.length];
-    this.clientEl.textContent = card.client.toUpperCase();
+    this.clientEl.textContent = 'EEN';
     this.titleEl.textContent = card.title;
-    this.metaEl.textContent = `${card.tags.join('  ·  ')}   —   ${card.year}`;
-    this.imgEl.src = card.image;
-    this.imgEl.alt = `${card.client} — ${card.title}`;
+    this.metaEl.textContent = card.tags.join('  ·  ');
     this.el.setAttribute('aria-hidden', 'false');
 
     gsap.timeline()
@@ -37,7 +35,7 @@ export class Overlay {
       .fromTo(this.el,
         { clipPath: 'inset(100% 0 0 0)' },
         { clipPath: 'inset(0% 0 0 0)', duration: 0.7, ease: 'power4.inOut' })
-      .from([this.clientEl, this.titleEl, this.metaEl, this.imgEl], {
+      .from([this.clientEl, this.metaEl, this.paneEl, this.titleEl], {
         y: 60, opacity: 0, duration: 0.6, stagger: 0.08, ease: 'power3.out',
       }, '-=0.25');
   }
@@ -60,6 +58,6 @@ export class Overlay {
   dispose() {
     window.removeEventListener('keydown', this._onKeydown);
     this._closeBtn.removeEventListener('click', this._onCloseClick);
-    gsap.killTweensOf([this.el, this.clientEl, this.titleEl, this.metaEl, this.imgEl]);
+    gsap.killTweensOf([this.el, this.clientEl, this.titleEl, this.metaEl, this.paneEl]);
   }
 }

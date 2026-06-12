@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { gridToSphere, SPHERE_RADIUS, THETA_STEP } from './sphericalMap.js';
-import { COLS, ROWS } from './data.js';
+import { COLS, ROWS } from './cameras';
 import { bakeCardTexture, CARD_ASPECT } from './cardTexture.js';
 
 const GAP = 0.06;          // fraction of cell width left as black gap

@@ -16,7 +16,8 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'VITE_PROXY_URL= VITE_EEN_CLIENT_ID= SPHERE_BASE=/sphere/ npx vite build && SPHERE_BASE=/sphere/ npx vite preview --port 4173',
+      'VITE_PROXY_URL=https://smoke.invalid VITE_EEN_CLIENT_ID=smoke ' +
+      'SPHERE_BASE=/sphere/ npx vite build && SPHERE_BASE=/sphere/ npx vite preview --port 4173',
     url: 'http://localhost:4173/sphere/',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

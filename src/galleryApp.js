@@ -1,21 +1,14 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
-import { makeCards } from './data.js';
+import { loadCameraCards, refreshPreview } from './cameras';
+import { bakeCardTexture } from './cardTexture.js';
 import { Gallery } from './gallery.js';
 import { Controls } from './controls.js';
 import { Overlay } from './overlay.js';
+import { VideoPane } from './videoPane.js';
 
 let ctx = null;
 let startGen = 0;
-
-function loadImages(cards) {
-  return Promise.all(cards.map((c) => new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = c.image;
-  })));
-}
 
 export async function startGallery(container) {
   if (ctx) {
@@ -45,18 +38,41 @@ export async function startGallery(container) {
 
   gsap.ticker.lagSmoothing(0);
 
-  const cards = makeCards();
-  const images = await loadImages(cards);
-  // destroyGallery() during the image load (or a quick logout/login cycle)
-  // bumps startGen: abandon this start and release what was already created.
-  if (gen !== startGen) {
+  const onPreview = (deviceId, dataUrl) => {
+    const apply = (img) => {
+      if (gen !== startGen) return; // gallery torn down before this preview arrived
+      // Bake ONCE per camera and share the texture across all its cells
+      // (their content is identical) — matters at 10 re-bakes/sec.
+      let tex = null;
+      for (const mesh of gallery.meshes) {
+        const card = mesh.userData.card;
+        if (card.deviceId !== deviceId) continue;
+        card.pending = false;
+        tex ??= bakeCardTexture(card, img);
+        if (mesh.material.map !== tex) mesh.material.map?.dispose();
+        mesh.material.map = tex;
+        mesh.material.needsUpdate = true;
+      }
+    };
+    if (!dataUrl) { apply(null); return; }
+    const img = new Image();
+    img.onload = () => apply(img);
+    img.onerror = () => apply(null);
+    img.src = dataUrl;
+  };
+
+  const { cards, error } = await loadCameraCards(onPreview);
+
+  const cleanupPartial = () => {
     window.removeEventListener('resize', onResize);
     renderer.dispose();
-    renderer.forceContextLoss(); // release the GL context so cycles don't exhaust the ~16-context cap
+    renderer.forceContextLoss();
     renderer.domElement.remove();
-    return;
-  }
-  const gallery = new Gallery(scene, cards, images);
+  };
+  if (gen !== startGen) { cleanupPartial(); return; }
+  if (error) { cleanupPartial(); return { error }; }
+
+  const gallery = new Gallery(scene, cards, cards.map(() => null));
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
   let pointerOnScreen = false;
@@ -77,6 +93,7 @@ export async function startGallery(container) {
   }
 
   const overlay = new Overlay();
+  const videoPane = new VideoPane();
 
   const controls = new Controls(renderer.domElement, () => {
     const mesh = pick();
@@ -84,9 +101,13 @@ export async function startGallery(container) {
       controls.enabled = false;
       gallery.setHover(null);
       overlay.open(mesh.userData.card);
+      void videoPane.open(mesh.userData.card.deviceId);
     }
   });
-  overlay.onCloseStart = () => { controls.enabled = true; };
+  overlay.onCloseStart = () => {
+    controls.enabled = true;
+    videoPane.close();
+  };
 
   const tick = () => {
     controls.tick();
@@ -108,6 +129,43 @@ export async function startGallery(container) {
   });
   gsap.from(controls.target, { x: 0.6, y: -0.3, duration: 1.8, ease: 'power3.out' });
 
+  // Rolling preview refresh: a 100ms interval (=> at most 10 image loads per
+  // second) re-fetches ONE on-screen camera's preview — the least recently
+  // refreshed — and re-bakes its cells. All shown cameras are online (offline
+  // ones are filtered out at load). Paused while the overlay streams video;
+  // cameras whose first preview hasn't arrived are skipped; a failed refresh
+  // keeps the existing image (onPreview only fires for non-null data).
+  // A camera with a refresh already in flight is skipped, so a hung request
+  // occupies one slot rather than being re-picked and piling up until the
+  // in-flight cap wedges all refreshing.
+  const REFRESH_INTERVAL_MS = 100;
+  const REFRESH_MAX_IN_FLIGHT = 10;
+  const lastRefresh = new Map();
+  const refreshing = new Set(); // deviceIds with a refresh currently in flight
+  const refreshTimer = setInterval(() => {
+    // document.hidden: don't burn EEN quota/battery while the tab is in the
+    // background (rAF rendering is paused there anyway).
+    if (document.hidden || overlay.isOpen || refreshing.size >= REFRESH_MAX_IN_FLIGHT) return;
+    let pickId = null;
+    let oldest = Infinity;
+    for (const mesh of gallery.meshes) {
+      if (!mesh.visible) continue;
+      const card = mesh.userData.card;
+      if (card.pending || refreshing.has(card.deviceId)) continue;
+      const t = lastRefresh.get(card.deviceId) ?? 0;
+      if (t < oldest) { oldest = t; pickId = card.deviceId; }
+    }
+    if (!pickId) return;
+    lastRefresh.set(pickId, performance.now());
+    refreshing.add(pickId);
+    refreshPreview(pickId)
+      .then((dataUrl) => {
+        if (dataUrl && gen === startGen) onPreview(pickId, dataUrl);
+      })
+      .catch((e) => console.warn('preview refresh failed:', e))
+      .finally(() => { refreshing.delete(pickId); });
+  }, REFRESH_INTERVAL_MS);
+
   // Test hook (dev server only): lets e2e tests wait for motion to settle by
   // reading controls state instead of diffing canvas pixels. Set last, after
   // the intro tweens exist, so its presence implies the intro has started.
@@ -115,18 +173,20 @@ export async function startGallery(container) {
     window.__sphere = { controls };
   }
 
-  ctx = { renderer, gallery, overlay, controls, tick, onResize, onPointerMove, camera };
+  ctx = { renderer, gallery, overlay, videoPane, controls, tick, onResize, onPointerMove, camera, refreshTimer };
 }
 
 export function destroyGallery() {
   startGen++; // cancels any in-flight startGallery
   if (!ctx) return;
+  clearInterval(ctx.refreshTimer);
   gsap.ticker.remove(ctx.tick);
   gsap.killTweensOf(ctx.camera);
   window.removeEventListener('resize', ctx.onResize);
   window.removeEventListener('pointermove', ctx.onPointerMove);
   ctx.controls.dispose();
   ctx.overlay.dispose();
+  ctx.videoPane.dispose();
   ctx.gallery.dispose();
   ctx.renderer.dispose();
   ctx.renderer.forceContextLoss(); // release the GL context so cycles don't exhaust the ~16-context cap

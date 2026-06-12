@@ -1,5 +1,6 @@
-// The ONLY module that imports een-api-toolkit. Components use these
-// wrappers so the toolkit surface stays in one place.
+// One of exactly two modules that import een-api-toolkit (the other is
+// src/cameras.ts). Components use these wrappers so the toolkit surface
+// stays contained.
 import {
   initEenToolkit,
   getAuthUrl,

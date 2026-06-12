@@ -1,9 +1,10 @@
 # Sphere Gallery
 
-A WebGL proof of concept: an image gallery wrapped around the inside of a sphere.
-You stand at the center, drag to look around, and the grid of cards scrolls
-infinitely in every direction with smooth, eased inertia. Clicking a card animates
-a detail page in; closing it returns you exactly where you were.
+A WebGL proof of concept: your Eagle Eye Networks cameras on the inside of a
+sphere. After signing in, live preview images of the account's cameras wrap
+around you in an endlessly scrolling grid; clicking a camera opens its live
+video feed. Drag to look around — the grid scrolls infinitely in every
+direction with smooth, eased inertia.
 
 Inspired by the work gallery at [phantom.land](https://www.phantom.land/).
 
@@ -23,6 +24,10 @@ extent — which is why the scroll is endless in both axes with no poles.
   photo and its labels baked into a single canvas texture per card.
 - **Motion:** [GSAP](https://gsap.com/) — drag inertia, fling momentum, hover
   brightening, the detail-overlay timeline, and the intro zoom.
+- **Cameras:** after login, the account's cameras are fetched and distributed
+  across the 100-cell grid (staggered round-robin, so neighboring cells show
+  different cameras at any count). Preview images stream into the card
+  textures as they arrive; each card opens a live MJPEG feed of its camera.
 - **Tooling:** [Vite](https://vite.dev/) + [Vitest](https://vitest.dev/) (the
   grid→sphere math, card data, and auth helpers are unit tested), with a
   [Vue 3](https://vuejs.org/) + [Pinia](https://pinia.vuejs.org/) shell for
@@ -35,13 +40,14 @@ targets Chrome only).
 
 ```bash
 npm install
-npm run fetch-images   # one-time: downloads 100 sample 640x480 images into public/assets
 npm run dev            # open http://127.0.0.1:3333
 ```
 
 > The dev server binds `http://127.0.0.1:3333` exactly — the EEN Identity
 > Provider only accepts that redirect URI, so `localhost` will not work for
 > login.
+
+A `.env` with EEN credentials is required (see Authentication) — there is no unauthenticated mode.
 
 Other scripts: `npm test` (unit tests), `npm run test:e2e` (Playwright end-to-end
 tests in Chromium — first run `npx playwright install chromium`; on Linux use
@@ -59,11 +65,11 @@ runs against the EEN Identity Provider through
 [een-api-toolkit](https://github.com/klaushofrichter/een-api-toolkit) (Vue 3 +
 Pinia). The proxy keeps `CLIENT_SECRET` and refresh tokens server-side.
 
-Without those two variables the app builds in **open mode** — no login, the
-gallery is public (used by the local build-smoke test and available for
-demos). The GitHub Pages deployment builds **with** them, so the live site
-requires sign-in; after each deploy, the live verification performs a real
-EEN login against the deployed site before a release is cut.
+Authentication is mandatory: without those two variables the build renders a
+configuration error instead of the app (the production-build smoke test uses
+dummy values to verify the login gate). The GitHub Pages deployment builds
+with them, and the post-deploy live verification performs a real EEN login
+before a release is cut.
 
 Auth e2e: the Playwright `setup` project performs a real EEN login with
 `TEST_USER`/`TEST_PASSWORD` (locally from `.env`, in CI from repo secrets) and
@@ -95,7 +101,7 @@ them with:
 | Variable | Used by |
 |---|---|
 | `ANTHROPIC_API_KEY` | The Claude code-review workflow (`.github/workflows/pr-review.yml`), which posts an automated review comment on every PR. |
-| `VITE_PROXY_URL`, `VITE_EEN_CLIENT_ID` | The auth build switch: present → the app requires EEN sign-in (dev, CI e2e, and the GitHub Pages deployment); absent → open mode (build-smoke test, local demos). |
+| `VITE_PROXY_URL`, `VITE_EEN_CLIENT_ID` | The EEN OAuth configuration (mandatory): the app requires sign-in everywhere; missing values produce a configuration-error screen. |
 | `TEST_USER`, `TEST_PASSWORD` | The EEN test account used by the Playwright auth setup for real-login e2e (local + CI). |
 
 Secrets are write-only on GitHub: they can be replaced or deleted but never
@@ -118,13 +124,12 @@ read back, and re-running the script overwrites existing values.
 
 ## Notes
 
-- Sample images come from [Lorem Picsum](https://picsum.photos/) with fixed seeds,
-  so the set is reproducible. Card metadata (clients, titles, tags, years) is
-  generated fictional placeholder content.
+- Gallery content comes from the signed-in account's cameras. Cameras without
+  a retrievable preview show a placeholder tile and remain clickable; the
+  live feed is the camera's MJPEG preview stream (a full-quality WebCodecs
+  player is a planned upgrade behind the same video-pane interface).
 - This is a proof of concept: desktop Chrome only, no mobile/touch or
-  accessibility work. A later phase will swap images dynamically from a service
-  and add automatic navigation (both are just texture re-bakes and offset tweens
-  in the current architecture).
+  accessibility work. A later phase will add automatic, smooth navigation through the gallery (the scroll offset is a single tweenable vector by design).
 
 ## Credits
 
