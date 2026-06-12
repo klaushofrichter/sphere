@@ -125,10 +125,9 @@ jobs:
       - name: Package the deployed build
         run: |
           # Guard against a silently empty artifact download: the deployed
-          # build must contain the entry page and all 100 gallery images.
+          # build must contain the entry page and the hashed bundle.
           test -f dist/index.html || { echo "::error::dist/index.html missing - artifact download failed?"; exit 1; }
-          IMG_COUNT=$(find dist/assets -name 'img-*.jpg' | wc -l)
-          [ "$IMG_COUNT" -eq 100 ] || { echo "::error::expected 100 images in dist, found $IMG_COUNT"; exit 1; }
+          ls dist/assets/index-*.js >/dev/null 2>&1 || { echo "::error::hashed JS bundle missing from dist"; exit 1; }
 
           VERSION=$(node -p "require('./package.json').version")
           TAG="v${VERSION}-r${{ github.run_number }}"

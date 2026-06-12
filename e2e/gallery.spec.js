@@ -35,7 +35,9 @@ async function settleGallery(page) {
 /** Navigate, wait for all images, and let the intro animation settle. */
 async function openGallery(page) {
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  // No networkidle: camera previews keep streaming in after mount.
+  // The canvas appearing means the gallery constructed (placeholders first).
+  await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
   await settleGallery(page);
 }
 
@@ -122,7 +124,12 @@ test.describe('sphere gallery', () => {
     await expect(page.locator('#overlay-title')).not.toBeEmpty();
     await expect(page.locator('#overlay-client')).not.toBeEmpty();
     await expect(page.locator('#overlay-meta')).not.toBeEmpty();
-    await expect(page.locator('#overlay-img')).toHaveAttribute('src', /\/assets\/img-\d+\.jpg/);
+    // Stream or a clean error: the feed URL comes from the real account.
+    const stream = page.locator('#video-stream[src]');
+    const paneError = page.getByTestId('video-error');
+    // .first(): the hidden error element always matches the testid locator, so
+    // the or-set can contain two nodes; DOM order puts the stream first.
+    await expect(stream.or(paneError).first()).toBeVisible({ timeout: 20_000 });
   });
 
   test('a drag does NOT open the overlay', async ({ page }) => {

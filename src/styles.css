@@ -30,7 +30,6 @@ body.hover-card { cursor: pointer; }
   text-transform: uppercase; margin: 12px 0 24px;
 }
 .overlay-meta { font-size: 13px; letter-spacing: 0.1em; margin-bottom: 40px; opacity: 0.9; }
-.overlay-img { width: 100%; border-radius: 6px; }
 
 .gallery-canvas { position: fixed; inset: 0; }
 .gallery-canvas canvas { position: fixed; inset: 0; display: block; }
@@ -39,6 +38,7 @@ body.hover-card { cursor: pointer; }
   align-items: center; justify-content: center; gap: 16px;
   background: #000; cursor: default; text-align: center;
 }
+.login[data-error] { z-index: 6; }
 .login-title { font-family: Helvetica, Arial, sans-serif; font-size: 48px; letter-spacing: 0.04em; }
 .login-sub { font-size: 13px; color: #888; letter-spacing: 0.15em; }
 .login-error { font-size: 13px; color: #d65b5b; max-width: 480px; }
@@ -57,3 +57,11 @@ body.hover-card { cursor: pointer; }
   cursor: pointer;
 }
 .user-chip-button:hover { color: #fff; border-color: #666; }
+.video-pane { position: relative; width: 100%; }
+.video-stream { width: 100%; min-height: 200px; background: #000; border-radius: 6px; }
+.video-live {
+  position: absolute; top: 12px; left: 12px;
+  background: #d32f2f; color: #fff; font-size: 11px; letter-spacing: 0.1em;
+  padding: 4px 10px; border-radius: 999px;
+}
+.video-error { font-size: 13px; color: #d65b5b; padding: 24px 0; }

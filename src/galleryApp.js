@@ -1,21 +1,14 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
-import { makeCards } from './data.js';
+import { loadCameraCards } from './cameras';
+import { bakeCardTexture } from './cardTexture.js';
 import { Gallery } from './gallery.js';
 import { Controls } from './controls.js';
 import { Overlay } from './overlay.js';
+import { VideoPane } from './videoPane.js';
 
 let ctx = null;
 let startGen = 0;
-
-function loadImages(cards) {
-  return Promise.all(cards.map((c) => new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = c.image;
-  })));
-}
 
 export async function startGallery(container) {
   if (ctx) {
@@ -45,18 +38,38 @@ export async function startGallery(container) {
 
   gsap.ticker.lagSmoothing(0);
 
-  const cards = makeCards();
-  const images = await loadImages(cards);
-  // destroyGallery() during the image load (or a quick logout/login cycle)
-  // bumps startGen: abandon this start and release what was already created.
-  if (gen !== startGen) {
+  const onPreview = (deviceId, dataUrl) => {
+    const apply = (img) => {
+      if (gen !== startGen) return; // gallery torn down before this preview arrived
+      for (const mesh of gallery.meshes) {
+        const card = mesh.userData.card;
+        if (card.deviceId !== deviceId) continue;
+        card.pending = false;
+        const tex = bakeCardTexture(card, img);
+        mesh.material.map?.dispose();
+        mesh.material.map = tex;
+        mesh.material.needsUpdate = true;
+      }
+    };
+    if (!dataUrl) { apply(null); return; }
+    const img = new Image();
+    img.onload = () => apply(img);
+    img.onerror = () => apply(null);
+    img.src = dataUrl;
+  };
+
+  const { cards, error } = await loadCameraCards(onPreview);
+
+  const cleanupPartial = () => {
     window.removeEventListener('resize', onResize);
     renderer.dispose();
-    renderer.forceContextLoss(); // release the GL context so cycles don't exhaust the ~16-context cap
+    renderer.forceContextLoss();
     renderer.domElement.remove();
-    return;
-  }
-  const gallery = new Gallery(scene, cards, images);
+  };
+  if (gen !== startGen) { cleanupPartial(); return; }
+  if (error) { cleanupPartial(); return { error }; }
+
+  const gallery = new Gallery(scene, cards, cards.map(() => null));
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
   let pointerOnScreen = false;
@@ -77,6 +90,7 @@ export async function startGallery(container) {
   }
 
   const overlay = new Overlay();
+  const videoPane = new VideoPane();
 
   const controls = new Controls(renderer.domElement, () => {
     const mesh = pick();
@@ -84,9 +98,13 @@ export async function startGallery(container) {
       controls.enabled = false;
       gallery.setHover(null);
       overlay.open(mesh.userData.card);
+      void videoPane.open(mesh.userData.card.deviceId);
     }
   });
-  overlay.onCloseStart = () => { controls.enabled = true; };
+  overlay.onCloseStart = () => {
+    controls.enabled = true;
+    videoPane.close();
+  };
 
   const tick = () => {
     controls.tick();
@@ -115,7 +133,7 @@ export async function startGallery(container) {
     window.__sphere = { controls };
   }
 
-  ctx = { renderer, gallery, overlay, controls, tick, onResize, onPointerMove, camera };
+  ctx = { renderer, gallery, overlay, videoPane, controls, tick, onResize, onPointerMove, camera };
 }
 
 export function destroyGallery() {
@@ -127,6 +145,7 @@ export function destroyGallery() {
   window.removeEventListener('pointermove', ctx.onPointerMove);
   ctx.controls.dispose();
   ctx.overlay.dispose();
+  ctx.videoPane.dispose();
   ctx.gallery.dispose();
   ctx.renderer.dispose();
   ctx.renderer.forceContextLoss(); // release the GL context so cycles don't exhaust the ~16-context cap
