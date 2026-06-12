@@ -35,7 +35,7 @@ export class Overlay {
       .fromTo(this.el,
         { clipPath: 'inset(100% 0 0 0)' },
         { clipPath: 'inset(0% 0 0 0)', duration: 0.7, ease: 'power4.inOut' })
-      .from([this.clientEl, this.titleEl, this.metaEl, this.paneEl], {
+      .from([this.clientEl, this.metaEl, this.paneEl, this.titleEl], {
         y: 60, opacity: 0, duration: 0.6, stagger: 0.08, ease: 'power3.out',
       }, '-=0.25');
   }

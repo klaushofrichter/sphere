@@ -26,10 +26,10 @@ body.hover-card { cursor: pointer; }
 .overlay-client { font-size: 13px; letter-spacing: 0.15em; opacity: 0.8; }
 .overlay-title {
   font-family: Helvetica, Arial, sans-serif;
-  font-size: clamp(48px, 9vw, 130px); line-height: 0.95;
-  text-transform: uppercase; margin: 12px 0 24px;
+  font-size: clamp(24px, 4.5vw, 65px); line-height: 0.95;
+  text-transform: uppercase; margin: 24px 0 0;
 }
-.overlay-meta { font-size: 13px; letter-spacing: 0.1em; margin-bottom: 40px; opacity: 0.9; }
+.overlay-meta { font-size: 13px; letter-spacing: 0.1em; margin-bottom: 24px; opacity: 0.9; }
 
 .gallery-canvas { position: fixed; inset: 0; }
 .gallery-canvas canvas { position: fixed; inset: 0; display: block; }

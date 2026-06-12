@@ -32,13 +32,13 @@ async function onSignOut() {
       <button class="overlay-close" id="overlay-close">Close</button>
       <div class="overlay-inner">
         <p class="overlay-client" id="overlay-client"></p>
-        <h1 class="overlay-title" id="overlay-title"></h1>
         <p class="overlay-meta" id="overlay-meta"></p>
         <div class="video-pane">
           <img class="video-stream" id="video-stream" alt="Live camera stream" />
           <span class="video-live" id="video-live" hidden>● LIVE</span>
           <p class="video-error" id="video-error" data-testid="video-error" hidden></p>
         </div>
+        <h1 class="overlay-title" id="overlay-title"></h1>
       </div>
     </div>
   </div>
