@@ -24,14 +24,17 @@ extent — which is why the scroll is endless in both axes with no poles.
   photo and its labels baked into a single canvas texture per card.
 - **Motion:** [GSAP](https://gsap.com/) — drag inertia, fling momentum, hover
   brightening, the detail-overlay timeline, and the intro zoom.
-- **Cameras:** after login, the account's cameras are fetched and distributed
-  across the 100-cell grid (staggered round-robin, so neighboring cells show
-  different cameras at any count). Preview images stream into the card
-  textures as they arrive; each card opens a live MJPEG feed of its camera.
+- **Cameras:** after login, the account's online cameras (offline ones are
+  excluded) are fetched and distributed across the 100-cell grid (staggered
+  round-robin, so neighboring cells show different cameras at any count).
+  Preview images stream into the card textures as they arrive and then keep
+  refreshing continuously — one visible camera per 100ms, at most 10 image
+  loads per second, paused while the tab is hidden or the video overlay is
+  open. Each card opens a live MJPEG feed of its camera.
 - **Tooling:** [Vite](https://vite.dev/) + [Vitest](https://vitest.dev/) (the
-  grid→sphere math, card data, and auth helpers are unit tested), with a
-  [Vue 3](https://vuejs.org/) + [Pinia](https://pinia.vuejs.org/) shell for
-  authentication.
+  grid→sphere math, camera distribution and fetch layer, and auth helpers are
+  unit tested), with a [Vue 3](https://vuejs.org/) +
+  [Pinia](https://pinia.vuejs.org/) shell for authentication.
 
 ## Quick start
 
@@ -83,7 +86,7 @@ the gallery suite runs authenticated; `auth.spec.ts` verifies the guard and
 | Left-click drag | Look around the sphere (infinite in all directions) |
 | Release while moving | Momentum fling with smooth decay |
 | Hover a card | Card brightens |
-| Click a card | Detail page animates in |
+| Click a card | Live video view animates in (camera name below the stream) |
 | Escape / Close | Back to the gallery, position preserved |
 
 ## Configuration (.env)
@@ -124,10 +127,12 @@ read back, and re-running the script overwrites existing values.
 
 ## Notes
 
-- Gallery content comes from the signed-in account's cameras. Cameras without
-  a retrievable preview show a placeholder tile and remain clickable; the
-  live feed is the camera's MJPEG preview stream (a full-quality WebCodecs
-  player is a planned upgrade behind the same video-pane interface).
+- Gallery content comes from the signed-in account's cameras: statuses
+  `online` and `streaming` are shown, everything else (offline and
+  transitional states) is excluded. Cameras without a retrievable preview
+  show a placeholder tile and remain clickable; the live feed is the
+  camera's MJPEG preview stream (a full-quality WebCodecs player is a
+  planned upgrade behind the same video-pane interface).
 - This is a proof of concept: desktop Chrome only, no mobile/touch or
   accessibility work. A later phase will add automatic, smooth navigation through the gallery (the scroll offset is a single tweenable vector by design).
 
