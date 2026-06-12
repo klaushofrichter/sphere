@@ -172,6 +172,9 @@ export async function loadCameraCards(
   }
 
   const assign = distributeCameras(cameras.length, COLS, ROWS);
+  if (cameras.length > COLS * ROWS) {
+    console.warn(`Account has ${cameras.length} cameras; showing the first ${COLS * ROWS}.`);
+  }
   const used = [...new Set(assign)];
   const cards: CameraCard[] = assign.map((cameraIdx, cell) => ({
     id: cell,

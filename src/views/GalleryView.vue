@@ -20,7 +20,7 @@ async function onSignOut() {
 
 <template>
   <div>
-    <div v-if="errorMsg" class="login" data-testid="gallery-error">
+    <div v-if="errorMsg" class="login" data-error data-testid="gallery-error">
       <h1 class="login-title">SPHERE GALLERY</h1>
       <p class="login-error">{{ errorMsg }}</p>
       <button class="login-button" data-testid="error-signout" @click="onSignOut()">Sign out</button>

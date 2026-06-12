@@ -98,7 +98,7 @@ export async function startGallery(container) {
       controls.enabled = false;
       gallery.setHover(null);
       overlay.open(mesh.userData.card);
-      videoPane.open(mesh.userData.card.deviceId);
+      void videoPane.open(mesh.userData.card.deviceId);
     }
   });
   overlay.onCloseStart = () => {

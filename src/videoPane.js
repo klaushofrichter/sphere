@@ -11,6 +11,19 @@ export class VideoPane {
     this.live = document.getElementById('video-live');
     this.errorEl = document.getElementById('video-error');
     this._openId = 0;
+
+    this._onStreamLoad = () => {
+      this.errorEl.hidden = true;
+      this.live.hidden = false;
+    };
+    this._onStreamError = () => {
+      if (!this.img.getAttribute('src')) return; // src cleared on close — not a failure
+      this.live.hidden = true;
+      this.errorEl.textContent = 'Live stream unavailable';
+      this.errorEl.hidden = false;
+    };
+    this.img.addEventListener('load', this._onStreamLoad);
+    this.img.addEventListener('error', this._onStreamError);
   }
 
   async open(deviceId) {
@@ -28,7 +41,6 @@ export class VideoPane {
     }
     // multipartUrl is pre-signed: use verbatim, never append parameters.
     this.img.src = url;
-    this.live.hidden = false;
   }
 
   close() {
@@ -41,5 +53,7 @@ export class VideoPane {
 
   dispose() {
     this.close();
+    this.img.removeEventListener('load', this._onStreamLoad);
+    this.img.removeEventListener('error', this._onStreamError);
   }
 }
