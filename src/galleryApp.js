@@ -126,37 +126,38 @@ export async function startGallery(container) {
   });
   gsap.from(controls.target, { x: 0.6, y: -0.3, duration: 1.8, ease: 'power3.out' });
 
-  // Rolling preview refresh: every tick (100ms => at most 10 image loads per
-  // second) re-fetch ONE on-screen camera's preview — the least recently
-  // refreshed — and re-bake its cells. All shown cameras are online (offline
+  // Rolling preview refresh: a 100ms interval (=> at most 10 image loads per
+  // second) re-fetches ONE on-screen camera's preview — the least recently
+  // refreshed — and re-bakes its cells. All shown cameras are online (offline
   // ones are filtered out at load). Paused while the overlay streams video;
   // cameras whose first preview hasn't arrived are skipped; a failed refresh
   // keeps the existing image (onPreview only fires for non-null data).
+  // A camera with a refresh already in flight is skipped, so a hung request
+  // occupies one slot rather than being re-picked and piling up until the
+  // in-flight cap wedges all refreshing.
   const REFRESH_INTERVAL_MS = 100;
   const REFRESH_MAX_IN_FLIGHT = 10;
   const lastRefresh = new Map();
-  let refreshInFlight = 0;
+  const refreshing = new Set(); // deviceIds with a refresh currently in flight
   const refreshTimer = setInterval(() => {
-    if (overlay.isOpen || refreshInFlight >= REFRESH_MAX_IN_FLIGHT) return;
+    if (overlay.isOpen || refreshing.size >= REFRESH_MAX_IN_FLIGHT) return;
     let pickId = null;
     let oldest = Infinity;
     for (const mesh of gallery.meshes) {
       if (!mesh.visible) continue;
       const card = mesh.userData.card;
-      if (card.pending) continue;
+      if (card.pending || refreshing.has(card.deviceId)) continue;
       const t = lastRefresh.get(card.deviceId) ?? 0;
       if (t < oldest) { oldest = t; pickId = card.deviceId; }
     }
     if (!pickId) return;
     lastRefresh.set(pickId, performance.now());
-    refreshInFlight++;
+    refreshing.add(pickId);
     refreshPreview(pickId)
       .then((dataUrl) => {
         if (dataUrl && gen === startGen) onPreview(pickId, dataUrl);
       })
-      // .finally so a rejection can't leak the counter and wedge all
-      // refreshing once REFRESH_MAX_IN_FLIGHT leaked slots accumulate.
-      .finally(() => { refreshInFlight--; });
+      .finally(() => { refreshing.delete(pickId); });
   }, REFRESH_INTERVAL_MS);
 
   // Test hook (dev server only): lets e2e tests wait for motion to settle by

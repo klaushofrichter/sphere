@@ -190,11 +190,13 @@ export async function loadCameraCards(
   const queue = used.map((i) => cameras[i].id);
   const worker = async () => {
     for (let d = queue.shift(); d !== undefined; d = queue.shift()) {
-      const dataUrl = await refreshPreview(d);
+      // Guard the whole body: a thrown refresh (vs. the {data:null} path)
+      // would otherwise kill this worker and permanently shrink concurrency.
       try {
+        const dataUrl = await refreshPreview(d);
         onPreview(d, dataUrl);
       } catch (e) {
-        console.warn('onPreview callback failed:', e);
+        console.warn('preview load failed:', e);
       }
     }
   };

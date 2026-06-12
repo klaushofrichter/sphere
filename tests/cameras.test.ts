@@ -86,10 +86,7 @@ describe('distributeCameras', () => {
     for (let n = 2; n <= CELLS; n++) {
       const a = distributeCameras(n, COLS, ROWS);
       expect(new Set(a).size, `coverage for n=${n}`).toBe(n);
-      const issues = neighborsDiffer(a, COLS, ROWS);
-      const expected = n === 2 ? issues.filter((s) => s.startsWith('V')) : [];
-      // n=2 cannot avoid vertical collisions on a 10-row torus; only H is guaranteed.
-      expect(issues, `neighbors for n=${n}`).toEqual(expected);
+      expect(neighborsDiffer(a, COLS, ROWS), `neighbors for n=${n}`).toEqual([]);
     }
   });
 });
