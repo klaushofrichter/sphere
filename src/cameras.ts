@@ -163,12 +163,18 @@ export async function fetchAllCameras(): Promise<{ cameras: Camera[] | null; err
  * preview resolves; the caller re-bakes that camera's cells. Resolves once
  * the camera list is known; previews keep arriving after.
  */
+// Statuses that mean the camera is connected and can deliver video. The full
+// EEN enum also has offline variants (offline/deviceOffline/bridgeOffline/
+// invalidCredentials/error) and transitional states (registered/attaching/
+// initializing) — none of those belong in the gallery.
+const SHOWN_STATUSES = new Set(['ONLINE', 'STREAMING']);
+
 export async function loadCameraCards(
   onPreview: (deviceId: string, dataUrl: string | null) => void,
 ): Promise<{ cards: CameraCard[] | null; error: string | null }> {
   const { cameras: all, error } = await fetchAllCameras();
   if (error) return { cards: null, error };
-  const cameras = (all ?? []).filter((c) => cameraStatusText(c) === 'ONLINE');
+  const cameras = (all ?? []).filter((c) => SHOWN_STATUSES.has(cameraStatusText(c)));
   if (cameras.length === 0) {
     return { cards: null, error: 'No online cameras available for this account' };
   }

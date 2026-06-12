@@ -41,12 +41,15 @@ export async function startGallery(container) {
   const onPreview = (deviceId, dataUrl) => {
     const apply = (img) => {
       if (gen !== startGen) return; // gallery torn down before this preview arrived
+      // Bake ONCE per camera and share the texture across all its cells
+      // (their content is identical) — matters at 10 re-bakes/sec.
+      let tex = null;
       for (const mesh of gallery.meshes) {
         const card = mesh.userData.card;
         if (card.deviceId !== deviceId) continue;
         card.pending = false;
-        const tex = bakeCardTexture(card, img);
-        mesh.material.map?.dispose();
+        tex ??= bakeCardTexture(card, img);
+        if (mesh.material.map !== tex) mesh.material.map?.dispose();
         mesh.material.map = tex;
         mesh.material.needsUpdate = true;
       }
@@ -140,7 +143,9 @@ export async function startGallery(container) {
   const lastRefresh = new Map();
   const refreshing = new Set(); // deviceIds with a refresh currently in flight
   const refreshTimer = setInterval(() => {
-    if (overlay.isOpen || refreshing.size >= REFRESH_MAX_IN_FLIGHT) return;
+    // document.hidden: don't burn EEN quota/battery while the tab is in the
+    // background (rAF rendering is paused there anyway).
+    if (document.hidden || overlay.isOpen || refreshing.size >= REFRESH_MAX_IN_FLIGHT) return;
     let pickId = null;
     let oldest = Infinity;
     for (const mesh of gallery.meshes) {

@@ -12,6 +12,10 @@ export class VideoPane {
     this.errorEl = document.getElementById('video-error');
     this._openId = 0;
 
+    // Known PoC limitation: `load` on a multipart/x-mixed-replace <img> is
+    // not fired uniformly across browsers (per-frame, once, or not at all).
+    // Chrome — this project's only target — fires it on the first frame,
+    // which is exactly when the LIVE badge should appear.
     this._onStreamLoad = () => {
       this.errorEl.hidden = true;
       this.live.hidden = false;

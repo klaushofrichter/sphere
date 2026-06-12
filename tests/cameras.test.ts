@@ -126,7 +126,7 @@ describe('loadCameraCards', () => {
     expect(error).toBe('No online cameras available for this account');
   });
 
-  it('excludes offline cameras from the gallery', async () => {
+  it('excludes offline and transitional cameras, keeps online and streaming', async () => {
     vi.mocked(getCameras).mockResolvedValueOnce({
       data: {
         results: [
@@ -134,6 +134,8 @@ describe('loadCameraCards', () => {
           cam('b', 'Back', 'offline'),
           cam('c', 'Yard', { connectionStatus: 'online' }),
           cam('d', 'Gate', { connectionStatus: 'deviceOffline' }),
+          cam('e', 'Lobby', 'streaming'),
+          cam('f', 'Dock', 'initializing'),
         ],
       },
       error: null,
@@ -142,7 +144,7 @@ describe('loadCameraCards', () => {
 
     const { cards, error } = await loadCameraCards(() => {});
     expect(error).toBeNull();
-    expect(new Set(cards!.map((c) => c.deviceId))).toEqual(new Set(['a', 'c']));
+    expect(new Set(cards!.map((c) => c.deviceId))).toEqual(new Set(['a', 'c', 'e']));
   });
 
   it('errors when every camera is offline', async () => {
